@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   DndContext,
-  DragOverlay,
   useSensor,
   useSensors,
   PointerSensor,
@@ -30,6 +30,8 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
 
   const [activeSlotId, setActiveSlotId] = useState<string | null>(null);
   const [activePhotoSlotId, setActivePhotoSlotId] = useState<string | null>(null);
+  const [overlayPos, setOverlayPos] = useState<{ x: number; y: number } | null>(null);
+  const overlayMoveRef = useRef<((e: PointerEvent) => void) | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -48,12 +50,31 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
   const layout = LAYOUT_CONFIGS[page.layout];
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActivePhotoSlotId(event.active.id as string);
+    const slotId = event.active.id as string;
+    setActivePhotoSlotId(slotId);
+    // Start following the pointer so overlay matches cursor exactly
+    const start = (event.activatorEvent as PointerEvent | undefined) || undefined;
+    if (start) {
+      setOverlayPos({ x: start.clientX, y: start.clientY });
+    }
+
+    const onPointerMove = (e: PointerEvent) => {
+      setOverlayPos({ x: e.clientX, y: e.clientY });
+    };
+    overlayMoveRef.current = onPointerMove;
+    window.addEventListener('pointermove', onPointerMove);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActivePhotoSlotId(null);
+
+    // stop pointer following
+    if (overlayMoveRef.current) {
+      window.removeEventListener('pointermove', overlayMoveRef.current);
+      overlayMoveRef.current = null;
+    }
+    setOverlayPos(null);
 
     if (over && active.id !== over.id) {
       swapSlots(page.id, active.id as string, over.id as string);
@@ -67,6 +88,8 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
 
   const activeSlot = page.slots.find((s) => s.id === activePhotoSlotId);
   const activePhoto = activeSlot ? getPhoto(activeSlot.photoId) : null;
+
+  const overlaySize = 96; // or any value
 
   return (
     <div
@@ -128,17 +151,25 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
             })}
           </div>
 
-          <DragOverlay>
-            {activePhoto && (
-              <div className="w-32 h-32 rounded-xl overflow-hidden shadow-2xl opacity-90 ring-2 ring-violet-400">
-                <img
-                  src={activePhoto.url}
-                  alt={activePhoto.name}
-                  className="w-full h-full object-cover"
-                />
+          {/* Custom floating overlay that follows the pointer exactly while dragging */}
+          {overlayPos && activePhoto && createPortal(
+            <div
+              style={{
+                position: 'fixed',
+                left: overlayPos.x - overlaySize / 2,
+                top: overlayPos.y - overlaySize / 2,
+                width: overlaySize,
+                height: overlaySize,
+                pointerEvents: 'none',
+                zIndex: 9999,
+              }}
+            >
+              <div className="rounded-xl overflow-hidden shadow-2xl ring-2 ring-violet-400 bg-white opacity-90 h-full w-full">
+                <img src={activePhoto.url} alt={activePhoto.name} className="w-full h-full object-cover" />
               </div>
-            )}
-          </DragOverlay>
+            </div>,
+            document.body
+          )}
         </DndContext>
       </div>
     </div>

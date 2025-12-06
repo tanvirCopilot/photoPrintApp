@@ -5,12 +5,16 @@ interface DraggableSlotProps {
   id: string;
   children: React.ReactNode;
   hasPhoto: boolean;
+  onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
+  refCallback?: (el: HTMLDivElement | null) => void;
 }
 
 export const DraggableSlot: React.FC<DraggableSlotProps> = ({
   id,
   children,
   hasPhoto,
+  onPointerDown,
+  refCallback,
 }) => {
   const {
     attributes,
@@ -30,17 +34,19 @@ export const DraggableSlot: React.FC<DraggableSlotProps> = ({
   const setRefs = (element: HTMLDivElement | null) => {
     setDraggableRef(element);
     setDroppableRef(element);
+    if (typeof refCallback === 'function') refCallback(element);
   };
 
   return (
     <div
       ref={setRefs}
+      onPointerDown={onPointerDown}
       {...listeners}
       {...attributes}
       className={`
         relative rounded-lg overflow-hidden
         transition-all duration-200 ease-out
-        ${isDragging ? 'opacity-40 scale-95' : ''}
+        ${isDragging ? 'invisible scale-95' : ''}
         ${isOver ? 'ring-2 ring-violet-400 ring-offset-2 ring-offset-white scale-[1.02]' : ''}
         ${hasPhoto ? 'cursor-grab active:cursor-grabbing shadow-md' : 'cursor-default bg-gray-50'}
       `}

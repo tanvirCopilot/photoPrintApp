@@ -31,12 +31,12 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
   const [localScale, setLocalScale] = useState(slot.scale);
   const [localRotation, setLocalRotation] = useState(slot.rotation || 0);
 
-  // Sync with slot changes
+  // Sync with slot changes (including photoId to reset state on swap)
   useEffect(() => {
     setLocalOffset({ x: slot.offsetX, y: slot.offsetY });
     setLocalScale(slot.scale);
     setLocalRotation(slot.rotation || 0);
-  }, [slot.offsetX, slot.offsetY, slot.scale, slot.rotation]);
+  }, [slot.photoId, slot.offsetX, slot.offsetY, slot.scale, slot.rotation]);
 
   const getTouchDistance = (touches: React.TouchList | TouchList) => {
     if (touches.length < 2) return 0;
