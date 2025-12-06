@@ -33,8 +33,13 @@ export const PDFExporter: React.FC = () => {
           pdf.addPage();
         }
 
-        const slotWidth = printableWidth / layout.cols;
-        const slotHeight = printableHeight / layout.rows;
+        // Compute column widths and row heights (respect flexible page sizes if present)
+        const colWidths: number[] = page.colSizes && page.colSizes.length === layout.cols
+          ? page.colSizes.map((f) => f * printableWidth)
+          : Array.from({ length: layout.cols }, () => printableWidth / layout.cols);
+        const rowHeights: number[] = page.rowSizes && page.rowSizes.length === layout.rows
+          ? page.rowSizes.map((f) => f * printableHeight)
+          : Array.from({ length: layout.rows }, () => printableHeight / layout.rows);
 
         // Padding inside each slot (in mm) so images don't touch the grid borders
         const slotPaddingMM = 2; // ~5px equivalent at print resolution
@@ -49,8 +54,11 @@ export const PDFExporter: React.FC = () => {
           const row = Math.floor(slotIndex / layout.cols);
           const col = slotIndex % layout.cols;
 
-          const x = PRINT_MARGIN_MM + col * slotWidth;
-          const y = PRINT_MARGIN_MM + row * slotHeight;
+          // compute x/y and slot sizes using flexible widths/heights
+          const x = PRINT_MARGIN_MM + colWidths.slice(0, col).reduce((a, b) => a + b, 0);
+          const y = PRINT_MARGIN_MM + rowHeights.slice(0, row).reduce((a, b) => a + b, 0);
+          const slotWidth = colWidths[col];
+          const slotHeight = rowHeights[row];
 
           // Determine rotation and whether dimensions should be swapped
           const rot = (slot.rotation || 0) % 360;
@@ -158,14 +166,20 @@ export const PDFExporter: React.FC = () => {
         pdf.setDrawColor(220, 220, 220);
         pdf.setLineWidth(0.1);
 
-        for (let row = 0; row <= layout.rows; row++) {
-          const y = PRINT_MARGIN_MM + row * slotHeight;
-          pdf.line(PRINT_MARGIN_MM, y, PRINT_MARGIN_MM + printableWidth, y);
+        // Draw horizontal grid lines using rowHeights
+        let accY = PRINT_MARGIN_MM;
+        pdf.line(PRINT_MARGIN_MM, accY, PRINT_MARGIN_MM + printableWidth, accY);
+        for (let r = 0; r < rowHeights.length; r++) {
+          accY += rowHeights[r];
+          pdf.line(PRINT_MARGIN_MM, accY, PRINT_MARGIN_MM + printableWidth, accY);
         }
 
-        for (let col = 0; col <= layout.cols; col++) {
-          const x = PRINT_MARGIN_MM + col * slotWidth;
-          pdf.line(x, PRINT_MARGIN_MM, x, PRINT_MARGIN_MM + printableHeight);
+        // Draw vertical grid lines using colWidths
+        let accX = PRINT_MARGIN_MM;
+        pdf.line(accX, PRINT_MARGIN_MM, accX, PRINT_MARGIN_MM + printableHeight);
+        for (let c = 0; c < colWidths.length; c++) {
+          accX += colWidths[c];
+          pdf.line(accX, PRINT_MARGIN_MM, accX, PRINT_MARGIN_MM + printableHeight);
         }
 
         setProgress(((pageIndex + 1) / pages.length) * 100);

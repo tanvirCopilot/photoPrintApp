@@ -21,6 +21,9 @@ export interface Page {
   id: string;
   slots: PhotoSlot[];
   layout: LayoutType;
+  // Column and row sizes as fractions summing to 1.0
+  colSizes: number[];
+  rowSizes: number[];
 }
 
 export type LayoutType = 1 | 2 | 3 | 4 | 6 | 8 | 12;

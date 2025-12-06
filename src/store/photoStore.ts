@@ -23,6 +23,7 @@ interface PhotoStore {
   defaultLayout: LayoutType;
   setDefaultLayout: (layout: LayoutType) => void;
   setPageLayout: (pageId: string, layout: LayoutType) => void;
+  updatePageGridSizes: (pageId: string, colSizes?: number[], rowSizes?: number[]) => void;
 
   // Slots
   assignPhotoToSlot: (pageId: string, slotId: string, photoId: string | null) => void;
@@ -134,10 +135,16 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
 
   addPage: (layout?: LayoutType) => {
     const pageLayout = layout ?? get().defaultLayout;
+    const config = LAYOUT_CONFIGS[pageLayout];
+    const defaultColSizes = Array.from({ length: config.cols }, () => 1 / config.cols);
+    const defaultRowSizes = Array.from({ length: config.rows }, () => 1 / config.rows);
+
     const newPage: Page = {
       id: uuidv4(),
       slots: createEmptySlots(pageLayout),
       layout: pageLayout,
+      colSizes: defaultColSizes,
+      rowSizes: defaultRowSizes,
     };
 
     set((state) => ({
@@ -172,6 +179,8 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
         ...slot,
         id: uuidv4(),
       })),
+      colSizes: [...page.colSizes],
+      rowSizes: [...page.rowSizes],
     };
 
     set((state) => {
@@ -216,10 +225,16 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
           }
         });
 
+        const config = LAYOUT_CONFIGS[layout];
+        const defaultColSizes = Array.from({ length: config.cols }, () => 1 / config.cols);
+        const defaultRowSizes = Array.from({ length: config.rows }, () => 1 / config.rows);
+
         return {
           ...page,
           layout,
           slots: newSlots,
+          colSizes: defaultColSizes,
+          rowSizes: defaultRowSizes,
         };
       }),
     }));
@@ -365,11 +380,40 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
         }
       });
 
-      newPages.push({ id: uuidv4(), layout: state.defaultLayout, slots: newSlots });
+      // initialize default col/row sizes for the created page
+      const cfg = LAYOUT_CONFIGS[state.defaultLayout];
+      const defaultColSizes = Array.from({ length: cfg.cols }, () => 1 / cfg.cols);
+      const defaultRowSizes = Array.from({ length: cfg.rows }, () => 1 / cfg.rows);
+
+      newPages.push({
+        id: uuidv4(),
+        layout: state.defaultLayout,
+        slots: newSlots,
+        colSizes: defaultColSizes,
+        rowSizes: defaultRowSizes,
+      });
     }
 
     set({ pages: newPages });
   },
+
+  updatePageGridSizes: (pageId: string, colSizes?: number[], rowSizes?: number[]) => {
+    set((state) => ({
+      pages: state.pages.map((page) => {
+        if (page.id !== pageId) return page;
+        return {
+          ...page,
+          colSizes: colSizes ? [...colSizes] : page.colSizes,
+          rowSizes: rowSizes ? [...rowSizes] : page.rowSizes,
+        };
+      }),
+    }));
+  },
+
+  // Update grid sizing (colSizes/rowSizes) for a page
+  // Both arrays should be fractions that sum approximately to 1
+  // Caller can pass undefined for one of them to only update the other
+  // NOTE: add this method via a type assertion below (we'll extend PhotoStore interface if needed)
 
   getUnassignedPhotos: () => {
     const state = get();

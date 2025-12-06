@@ -48,6 +48,57 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
   );
 
   const layout = LAYOUT_CONFIGS[page.layout];
+  const updatePageGridSizes = usePhotoStore((s) => s.updatePageGridSizes);
+
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const resizingRef = useRef<{
+    type: 'col' | 'row' | null;
+    index: number;
+    startPos: number;
+    startSizes: number[];
+  } | null>(null);
+
+  const MIN_FRACTION = 0.05;
+
+  const startResize = (type: 'col' | 'row', index: number, clientX: number, clientY: number) => {
+    const el = gridRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const startPos = type === 'col' ? clientX : clientY;
+    const startSizes = (type === 'col' ? page.colSizes : page.rowSizes) || [];
+    resizingRef.current = { type, index, startPos, startSizes: [...startSizes] };
+    const onMove = (e: PointerEvent) => {
+      if (!resizingRef.current) return;
+      const deltaPx = type === 'col' ? e.clientX - resizingRef.current.startPos : e.clientY - resizingRef.current.startPos;
+      const totalPx = type === 'col' ? rect.width : rect.height;
+      if (!totalPx) return;
+      const deltaFrac = deltaPx / totalPx;
+
+      const sizes = [...resizingRef.current.startSizes];
+      const i = resizingRef.current.index;
+      // adjust neighboring columns/rows i-1 and i
+      const newA = Math.max(MIN_FRACTION, sizes[i - 1] + deltaFrac);
+      const newB = Math.max(MIN_FRACTION, sizes[i] - deltaFrac);
+
+      sizes[i - 1] = newA;
+      sizes[i] = newB;
+
+      // Normalize full array to sum to 1
+      const total = sizes.reduce((acc, v) => acc + v, 0);
+      const normalized = sizes.map((v) => v / total);
+      if (type === 'col') updatePageGridSizes(page.id, normalized, undefined);
+      else updatePageGridSizes(page.id, undefined, normalized);
+    };
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      resizingRef.current = null;
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
 
   const handleDragStart = (event: DragStartEvent) => {
     const slotId = event.active.id as string;
@@ -123,13 +174,23 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
         >
           {/* Grid Layout */}
           <div
-            className="w-full h-full grid p-6 box-border"
+            ref={gridRef}
+            className="w-full h-full relative box-border"
             style={{
-              gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
-              gridTemplateColumns: `repeat(${layout.cols}, 1fr)`,
-              gap: '8px',
+              padding: '24px',
             }}
           >
+            {/* actual grid */}
+            <div
+              className="w-full h-full grid"
+              style={{
+                gridTemplateRows: page.rowSizes && page.rowSizes.length > 0 ? page.rowSizes.map((r) => `${r * 100}%`).join(' ') : `repeat(${layout.rows}, 1fr)`,
+                gridTemplateColumns: page.colSizes && page.colSizes.length > 0 ? page.colSizes.map((c) => `${c * 100}%`).join(' ') : `repeat(${layout.cols}, 1fr)`,
+                gap: '8px',
+                width: '100%',
+                height: '100%',
+              }}
+            >
             {page.slots.map((slot) => {
               const photo = getPhoto(slot.photoId);
               return (
@@ -150,6 +211,58 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
                 </DraggableSlot>
               );
             })}
+            </div>
+
+            {/* Vertical resizers between columns */}
+            {page.colSizes && page.colSizes.length > 1 && (
+              page.colSizes.slice(0, -1).map((_, i) => {
+                const leftPct = page.colSizes.slice(0, i + 1).reduce((a, b) => a + b, 0) * 100;
+                return (
+                  <div
+                    key={`col-resizer-${i}`}
+                    onPointerDown={(e) => startResize('col', i + 1, e.clientX, e.clientY)}
+                    style={{
+                      position: 'absolute',
+                      top: '24px',
+                      bottom: '24px',
+                      left: `${leftPct}%`,
+                      width: '12px',
+                      transform: 'translateX(-50%)',
+                      cursor: 'col-resize',
+                      zIndex: 50,
+                    }}
+                  >
+                    <div className="w-[2px] h-full bg-white/0 hover:bg-violet-400/60 mx-auto" />
+                  </div>
+                );
+              })
+            )}
+
+            {/* Horizontal resizers between rows */}
+            {page.rowSizes && page.rowSizes.length > 1 && (
+              page.rowSizes.slice(0, -1).map((_, i) => {
+                const topPct = page.rowSizes.slice(0, i + 1).reduce((a, b) => a + b, 0) * 100;
+                return (
+                  <div
+                    key={`row-resizer-${i}`}
+                    onPointerDown={(e) => startResize('row', i + 1, e.clientX, e.clientY)}
+                    style={{
+                      position: 'absolute',
+                      left: '24px',
+                      right: '24px',
+                      top: `${topPct}%`,
+                      height: '12px',
+                      transform: 'translateY(-50%)',
+                      cursor: 'row-resize',
+                      zIndex: 50,
+                    }}
+                  >
+                    <div className="h-[2px] w-full bg-white/0 hover:bg-violet-400/60" />
+                  </div>
+                );
+              })
+            )}
+
           </div>
 
           {/* Custom floating overlay that follows the pointer exactly while dragging */}
