@@ -49,11 +49,18 @@ export const PDFExporter: React.FC = () => {
           const x = PRINT_MARGIN_MM + col * slotWidth;
           const y = PRINT_MARGIN_MM + row * slotHeight;
 
+          // Determine rotation and whether dimensions should be swapped
+          const rot = (slot.rotation || 0) % 360;
+          const isRotated90or270 = rot === 90 || rot === 270;
+
           // Calculate image dimensions to fit slot while maintaining aspect ratio (contain)
-          const photoAspect = photo.width / photo.height;
+          // When rotated 90 or 270 degrees, the effective aspect ratio is inverted
+          const effectivePhotoWidth = isRotated90or270 ? photo.height : photo.width;
+          const effectivePhotoHeight = isRotated90or270 ? photo.width : photo.height;
+          const photoAspect = effectivePhotoWidth / effectivePhotoHeight;
           const slotAspect = slotWidth / slotHeight;
 
-          // base (contained) size inside slot
+          // base (contained) size inside slot using effective (post-rotation) dimensions
           let baseWidth: number;
           let baseHeight: number;
 
@@ -71,10 +78,13 @@ export const PDFExporter: React.FC = () => {
           const imgWidth = baseWidth * (slot.scale ?? 1);
           const imgHeight = baseHeight * (slot.scale ?? 1);
 
-          // Center the image in the slot. Note: slot.offsetX/Y are viewer-pixel offsets;
-          // without a robust mapping from viewer px -> mm we ignore precise offsets here to avoid large misplacements.
-          const imgX = x + (slotWidth - imgWidth) / 2;
-          const imgY = y + (slotHeight - imgHeight) / 2;
+          // Clamp to slot bounds
+          const drawWidth = Math.min(slotWidth, imgWidth);
+          const drawHeight = Math.min(slotHeight, imgHeight);
+
+          // Center the image in the slot
+          const imgX = x + (slotWidth - drawWidth) / 2;
+          const imgY = y + (slotHeight - drawHeight) / 2;
 
           try {
             // Convert photo to base64
@@ -86,11 +96,8 @@ export const PDFExporter: React.FC = () => {
             await new Promise<void>((resolve, reject) => {
               img.onload = () => {
                 try {
-                  // Prepare a canvas that will contain the rotated/scaled image
-                  const rot = (slot.rotation || 0) % 360;
-
+                  // Prepare a canvas that will contain the rotated image
                   // We draw the original image into an offscreen canvas and then export it.
-                  // Canvas size can be the image's natural pixel size; jsPDF will scale it to mm dimensions.
                   // If rotation is 90 or 270, swap width/height when drawing into rotated canvas.
 
                   if (rot === 0) {
@@ -102,7 +109,7 @@ export const PDFExporter: React.FC = () => {
                     const radians = (rot * Math.PI) / 180;
                     // create temp canvas to draw rotated image
                     const temp = document.createElement('canvas');
-                    if (rot === 90 || rot === 270) {
+                    if (isRotated90or270) {
                       temp.width = img.height;
                       temp.height = img.width;
                     } else {
@@ -133,15 +140,8 @@ export const PDFExporter: React.FC = () => {
 
             const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
-            // Add image into PDF at calculated mm dimensions (jsPDF will scale image accordingly)
-            pdf.addImage(
-              imgData,
-              'JPEG',
-              Math.max(x, imgX),
-              Math.max(y, imgY),
-              Math.min(slotWidth, imgWidth),
-              Math.min(slotHeight, imgHeight)
-            );
+            // Add image into PDF at calculated mm dimensions
+            pdf.addImage(imgData, 'JPEG', imgX, imgY, drawWidth, drawHeight);
           } catch (error) {
             console.error('Error adding image to PDF:', error);
           }
