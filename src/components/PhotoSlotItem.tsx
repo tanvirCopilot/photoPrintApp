@@ -218,6 +218,7 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
               objectFit: 'contain',
               transform: `scale(${localScale}) rotate(${localRotation}deg)`,
               transformOrigin: 'center',
+              padding: '5px',
             }}
             draggable={false}
           />
