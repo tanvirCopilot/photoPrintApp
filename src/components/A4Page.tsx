@@ -113,6 +113,7 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
           height: '100%',
           maxHeight: 'calc(100vh - 200px)',
           aspectRatio: '210 / 297', // A4 aspect ratio
+          padding: '10px',
         }}
       >
         <DndContext

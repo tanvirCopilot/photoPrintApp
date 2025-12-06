@@ -36,6 +36,9 @@ export const PDFExporter: React.FC = () => {
         const slotWidth = printableWidth / layout.cols;
         const slotHeight = printableHeight / layout.rows;
 
+        // Padding inside each slot (in mm) so images don't touch the grid borders
+        const slotPaddingMM = 2; // ~5px equivalent at print resolution
+
         for (let slotIndex = 0; slotIndex < page.slots.length; slotIndex++) {
           const slot = page.slots[slotIndex];
           if (!slot.photoId) continue;
@@ -53,38 +56,42 @@ export const PDFExporter: React.FC = () => {
           const rot = (slot.rotation || 0) % 360;
           const isRotated90or270 = rot === 90 || rot === 270;
 
+          // Calculate available area inside slot after padding
+          const availableWidth = slotWidth - 2 * slotPaddingMM;
+          const availableHeight = slotHeight - 2 * slotPaddingMM;
+
           // Calculate image dimensions to fit slot while maintaining aspect ratio (contain)
           // When rotated 90 or 270 degrees, the effective aspect ratio is inverted
           const effectivePhotoWidth = isRotated90or270 ? photo.height : photo.width;
           const effectivePhotoHeight = isRotated90or270 ? photo.width : photo.height;
           const photoAspect = effectivePhotoWidth / effectivePhotoHeight;
-          const slotAspect = slotWidth / slotHeight;
+          const slotAspect = availableWidth / availableHeight;
 
           // base (contained) size inside slot using effective (post-rotation) dimensions
           let baseWidth: number;
           let baseHeight: number;
 
           if (photoAspect > slotAspect) {
-            // photo is wider -> width fills slot width
-            baseWidth = slotWidth;
-            baseHeight = slotWidth / photoAspect;
+            // photo is wider -> width fills available width
+            baseWidth = availableWidth;
+            baseHeight = availableWidth / photoAspect;
           } else {
-            // photo is taller -> height fills slot height
-            baseHeight = slotHeight;
-            baseWidth = slotHeight * photoAspect;
+            // photo is taller -> height fills available height
+            baseHeight = availableHeight;
+            baseWidth = availableHeight * photoAspect;
           }
 
           // apply user scale (scale 1 = fit-to-slot)
           const imgWidth = baseWidth * (slot.scale ?? 1);
           const imgHeight = baseHeight * (slot.scale ?? 1);
 
-          // Clamp to slot bounds
-          const drawWidth = Math.min(slotWidth, imgWidth);
-          const drawHeight = Math.min(slotHeight, imgHeight);
+          // Clamp to available area (respecting padding)
+          const drawWidth = Math.min(availableWidth, imgWidth);
+          const drawHeight = Math.min(availableHeight, imgHeight);
 
-          // Center the image in the slot
-          const imgX = x + (slotWidth - drawWidth) / 2;
-          const imgY = y + (slotHeight - drawHeight) / 2;
+          // Center the image in the slot (account for padding)
+          const imgX = x + slotPaddingMM + (availableWidth - drawWidth) / 2;
+          const imgY = y + slotPaddingMM + (availableHeight - drawHeight) / 2;
 
           try {
             // Convert photo to base64
