@@ -326,7 +326,7 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
         </div>
 
         {/* Unified top-left control row: drag, fullscreen, rotate, layer */}
-        <div className="absolute top-1 left-1 z-40 flex items-center gap-2">
+        <div className="absolute top-1 left-1 z-40 flex flex-wrap items-center gap-2 max-w-[90%] p-0.5">
           {/* Drag handle - injected props from DraggableSlot */}
           <button
             {...(dragHandleProps || {})}
