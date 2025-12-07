@@ -214,6 +214,7 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
                   <DraggableSlot
                     id={slot.id}
                     hasPhoto={!!photo}
+                    isActive={activeSlotId === slot.id}
                   >
                       <PhotoSlotItem
                         slot={slot}
