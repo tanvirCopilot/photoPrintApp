@@ -36,21 +36,35 @@ interface PhotoStore {
   setAutoArrangeEnabled: (enabled: boolean) => void;
   autoArrangePhotos: () => void;
 
+  // Set span for a slot (colSpan, rowSpan)
+  setSlotSpan: (pageId: string, slotId: string, colSpan: number, rowSpan: number) => void;
+
   // Utility
   getUnassignedPhotos: () => Photo[];
 }
 
 const createEmptySlots = (layout: LayoutType): PhotoSlot[] => {
   const config = LAYOUT_CONFIGS[layout];
-  const count = config.rows * config.cols;
-  return Array.from({ length: count }, () => ({
-    id: uuidv4(),
-    photoId: null,
-    offsetX: 0,
-    offsetY: 0,
-    scale: 1,
-    rotation: 0,
-  }));
+  const slots: PhotoSlot[] = [];
+
+  for (let r = 0; r < config.rows; r++) {
+    for (let c = 0; c < config.cols; c++) {
+      slots.push({
+        id: uuidv4(),
+        photoId: null,
+        offsetX: 0,
+        offsetY: 0,
+        scale: 1,
+        rotation: 0,
+        colStart: c + 1,
+        rowStart: r + 1,
+        colSpan: 1,
+        rowSpan: 1,
+      });
+    }
+  }
+
+  return slots;
 };
 
 const loadImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
@@ -408,6 +422,193 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
         };
       }),
     }));
+  },
+
+  // Set span (colSpan / rowSpan) for a specific slot.
+  // Uses serial-based photo tracking: photos maintain their upload order across all operations.
+  // When span changes, photos are redistributed in serial order - displaced photos go to later
+  // pages, and on decrease, photos return from later pages to fill freed slots in serial order.
+  setSlotSpan: (pageId: string, slotId: string, colSpan: number, rowSpan: number) => {
+    const state = get();
+    const page = state.pages.find((p) => p.id === pageId);
+    if (!page) return;
+
+    const cfg = LAYOUT_CONFIGS[page.layout];
+    const targetSlot = page.slots.find((s) => s.id === slotId);
+    if (!targetSlot) return;
+
+    // Clamp span to grid bounds
+    const startCol = targetSlot.colStart ?? 1;
+    const startRow = targetSlot.rowStart ?? 1;
+    const maxColSpan = Math.max(1, cfg.cols - (startCol - 1));
+    const maxRowSpan = Math.max(1, cfg.rows - (startRow - 1));
+    const newColSpan = Math.max(1, Math.min(maxColSpan, Math.floor(colSpan)));
+    const newRowSpan = Math.max(1, Math.min(maxRowSpan, Math.floor(rowSpan)));
+
+    // Collect ALL photos across ALL pages in their serial order (upload order from state.photos)
+    const photoSerialOrder = state.photos.map((p) => p.id);
+
+    // Get all assigned photoIds across all pages
+    const allAssignedPhotoIds: string[] = [];
+    for (const pg of state.pages) {
+      for (const slot of pg.slots) {
+        if (slot.photoId && !allAssignedPhotoIds.includes(slot.photoId)) {
+          allAssignedPhotoIds.push(slot.photoId);
+        }
+      }
+    }
+
+    // Sort by serial order
+    allAssignedPhotoIds.sort((a, b) => photoSerialOrder.indexOf(a) - photoSerialOrder.indexOf(b));
+
+    // Now redistribute photos across pages, starting with page 1
+    // The target slot gets its new span, all other slots are 1x1
+    const pageIndex = state.pages.findIndex((p) => p.id === page.id);
+    const cols = cfg.cols;
+    const rows = cfg.rows;
+
+    // Helper to create occupancy grid and place slots
+    const redistributePhotos = () => {
+      const resultPages: Page[] = [];
+      let photoIdx = 0;
+
+      // Process each existing page
+      for (let pIdx = 0; pIdx < state.pages.length; pIdx++) {
+        const currentPage = state.pages[pIdx];
+        const pageCfg = LAYOUT_CONFIGS[currentPage.layout];
+        const pageCols = pageCfg.cols;
+        const pageRows = pageCfg.rows;
+
+        // Create occupancy grid for this page
+        const occ: boolean[][] = Array.from({ length: pageRows }, () =>
+          Array.from({ length: pageCols }, () => false)
+        );
+
+        const newSlots: PhotoSlot[] = [];
+
+        // If this is the edited page, place the target slot first with its new span
+        if (currentPage.id === pageId) {
+          const tStartCol = targetSlot.colStart ?? 1;
+          const tStartRow = targetSlot.rowStart ?? 1;
+
+          // Mark occupancy for target slot
+          for (let r = tStartRow; r < tStartRow + newRowSpan && r <= pageRows; r++) {
+            for (let c = tStartCol; c < tStartCol + newColSpan && c <= pageCols; c++) {
+              occ[r - 1][c - 1] = true;
+            }
+          }
+
+          // Add target slot with its photo (if any) - it keeps its position
+          const targetPhotoId = targetSlot.photoId;
+          newSlots.push({
+            id: targetSlot.id,
+            photoId: targetPhotoId,
+            offsetX: targetSlot.offsetX,
+            offsetY: targetSlot.offsetY,
+            scale: targetSlot.scale,
+            rotation: targetSlot.rotation,
+            colStart: tStartCol,
+            rowStart: tStartRow,
+            colSpan: newColSpan,
+            rowSpan: newRowSpan,
+          });
+
+          // Remove target's photo from the serial list (it's already placed)
+          if (targetPhotoId) {
+            const idx = allAssignedPhotoIds.indexOf(targetPhotoId);
+            if (idx !== -1) allAssignedPhotoIds.splice(idx, 1);
+          }
+        }
+
+        // Fill remaining cells with photos in serial order
+        for (let r = 1; r <= pageRows; r++) {
+          for (let c = 1; c <= pageCols; c++) {
+            if (occ[r - 1][c - 1]) continue; // already occupied
+
+            occ[r - 1][c - 1] = true;
+
+            // Get next photo in serial order
+            const nextPhotoId = photoIdx < allAssignedPhotoIds.length ? allAssignedPhotoIds[photoIdx] : null;
+            if (nextPhotoId) photoIdx++;
+
+            newSlots.push({
+              id: uuidv4(),
+              photoId: nextPhotoId,
+              offsetX: 0,
+              offsetY: 0,
+              scale: 1,
+              rotation: 0,
+              colStart: c,
+              rowStart: r,
+              colSpan: 1,
+              rowSpan: 1,
+            });
+          }
+        }
+
+        resultPages.push({
+          ...currentPage,
+          slots: newSlots,
+        });
+      }
+
+      // If there are remaining photos, create new pages
+      while (photoIdx < allAssignedPhotoIds.length) {
+        const defLayout = page.layout;
+        const defCfg = LAYOUT_CONFIGS[defLayout];
+        const defCols = defCfg.cols;
+        const defRows = defCfg.rows;
+
+        const newSlots: PhotoSlot[] = [];
+        for (let r = 1; r <= defRows; r++) {
+          for (let c = 1; c <= defCols; c++) {
+            const nextPhotoId = photoIdx < allAssignedPhotoIds.length ? allAssignedPhotoIds[photoIdx] : null;
+            if (nextPhotoId) photoIdx++;
+
+            newSlots.push({
+              id: uuidv4(),
+              photoId: nextPhotoId,
+              offsetX: 0,
+              offsetY: 0,
+              scale: 1,
+              rotation: 0,
+              colStart: c,
+              rowStart: r,
+              colSpan: 1,
+              rowSpan: 1,
+            });
+          }
+        }
+
+        resultPages.push({
+          id: uuidv4(),
+          layout: defLayout,
+          slots: newSlots,
+          colSizes: Array.from({ length: defCols }, () => 1 / defCols),
+          rowSizes: Array.from({ length: defRows }, () => 1 / defRows),
+        });
+      }
+
+      return resultPages;
+    };
+
+    let newPages = redistributePhotos();
+
+    // Remove blank pages (no photos). Keep at least one page.
+    let finalPages = newPages.filter((p) => p.slots.some((s) => s.photoId));
+    if (finalPages.length === 0) finalPages = [newPages[0]];
+
+    // Adjust currentPageIndex to stay valid
+    const oldCurrentPageId = state.pages[state.currentPageIndex]?.id;
+    let newCurrentPageIndex = finalPages.findIndex((p) => p.id === oldCurrentPageId);
+    if (newCurrentPageIndex === -1) {
+      newCurrentPageIndex = finalPages.findIndex((p) => p.id === page.id);
+    }
+    if (newCurrentPageIndex === -1) {
+      newCurrentPageIndex = Math.max(0, Math.min(state.currentPageIndex, finalPages.length - 1));
+    }
+
+    set({ pages: finalPages, currentPageIndex: newCurrentPageIndex });
   },
 
   // Update grid sizing (colSizes/rowSizes) for a page

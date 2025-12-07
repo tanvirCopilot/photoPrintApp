@@ -15,6 +15,11 @@ export interface PhotoSlot {
   offsetY: number;
   scale: number;
   rotation: number;
+  // Grid placement for spanning support (1-based indices)
+  colStart: number;
+  rowStart: number;
+  colSpan: number;
+  rowSpan: number;
 }
 
 export interface Page {

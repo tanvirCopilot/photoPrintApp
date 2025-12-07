@@ -191,24 +191,40 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
                 height: '100%',
               }}
             >
-            {page.slots.map((slot) => {
+            {page.slots.map((slot, slotIndex) => {
               const photo = getPhoto(slot.photoId);
+              // Fallbacks for older data that may not have colStart/rowStart/colSpan/rowSpan
+              const cols = layout.cols;
+              const colStart = slot.colStart ?? ((slotIndex % cols) + 1);
+              const rowStart = slot.rowStart ?? (Math.floor(slotIndex / cols) + 1);
+              const colSpan = slot.colSpan ?? 1;
+              const rowSpan = slot.rowSpan ?? 1;
+
+              const gridStyle: React.CSSProperties = {
+                gridColumn: `${colStart} / span ${colSpan}`,
+                gridRow: `${rowStart} / span ${rowSpan}`,
+                position: 'relative',
+                width: '100%',
+                height: '100%',
+              };
+
               return (
-                <DraggableSlot
-                  key={slot.id}
-                  id={slot.id}
-                  hasPhoto={!!photo}
-                >
-                  <PhotoSlotItem
-                    slot={slot}
-                    photo={photo}
-                    isActive={activeSlotId === slot.id}
-                    onActivate={() => setActiveSlotId(slot.id)}
-                    onPositionChange={(offsetX, offsetY, scale, rotation) =>
-                      updateSlotPosition(page.id, slot.id, offsetX, offsetY, scale, rotation)
-                    }
-                  />
-                </DraggableSlot>
+                <div key={slot.id} style={gridStyle}>
+                  <DraggableSlot
+                    id={slot.id}
+                    hasPhoto={!!photo}
+                  >
+                    <PhotoSlotItem
+                      slot={slot}
+                      photo={photo}
+                      isActive={activeSlotId === slot.id}
+                      onActivate={() => setActiveSlotId(slot.id)}
+                      onPositionChange={(offsetX, offsetY, scale, rotation) =>
+                        updateSlotPosition(page.id, slot.id, offsetX, offsetY, scale, rotation)
+                      }
+                    />
+                  </DraggableSlot>
+                </div>
               );
             })}
             </div>

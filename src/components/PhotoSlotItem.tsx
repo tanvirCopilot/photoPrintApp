@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import type { Photo, PhotoSlot } from '../types';
+import { usePhotoStore } from '../store/photoStore';
 
 interface PhotoSlotItemProps {
   slot: PhotoSlot;
@@ -25,6 +26,8 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
   const [startDistance, setStartDistance] = useState(0);
   const [showFullscreen, setShowFullscreen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   // Local state for smooth dragging
   const [localOffset, setLocalOffset] = useState({ x: slot.offsetX, y: slot.offsetY });
@@ -37,6 +40,37 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
     setLocalScale(slot.scale);
     setLocalRotation(slot.rotation || 0);
   }, [slot.photoId, slot.offsetX, slot.offsetY, slot.scale, slot.rotation]);
+
+  // Keyboard support: nudge scale when this slot is active.
+  useEffect(() => {
+    if (!isActive || !photo) return;
+
+    const handleKey = (e: KeyboardEvent) => {
+      const increaseKeys = ['+', '=', 'ArrowUp'];
+      const decreaseKeys = ['-', '_', 'ArrowDown'];
+
+      if (!increaseKeys.includes(e.key) && !decreaseKeys.includes(e.key)) return;
+
+      e.preventDefault();
+
+      const step = e.shiftKey ? 0.1 : e.altKey ? 0.01 : 0.05;
+      let newScale = localScale;
+
+      if (increaseKeys.includes(e.key)) {
+        newScale = Math.min(3, +(localScale + step).toFixed(3));
+      } else if (decreaseKeys.includes(e.key)) {
+        newScale = Math.max(0.3, +(localScale - step).toFixed(3));
+      }
+
+      if (newScale !== localScale) {
+        setLocalScale(newScale);
+        onPositionChange(localOffset.x, localOffset.y, newScale, localRotation);
+      }
+    };
+
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [isActive, photo, localScale, localOffset, localRotation, onPositionChange]);
 
   const getTouchDistance = (touches: React.TouchList | TouchList) => {
     if (touches.length < 2) return 0;
@@ -148,6 +182,25 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
     }
   }, [isDragging, isPinching, handleMouseMove, handleTouchMove, handleEnd]);
 
+  // Attach wheel listener with passive: false so we can call preventDefault without warnings
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const wheelHandler = (e: WheelEvent) => {
+      if (!photo || !isActive) return;
+      e.preventDefault();
+
+      const delta = e.deltaY > 0 ? 0.95 : 1.05;
+      const newScale = Math.max(0.3, Math.min(3, localScale * delta));
+      setLocalScale(newScale);
+      onPositionChange(localOffset.x, localOffset.y, newScale, localRotation);
+    };
+
+    el.addEventListener('wheel', wheelHandler, { passive: false });
+    return () => el.removeEventListener('wheel', wheelHandler);
+  }, [containerRef, photo, isActive, localScale, localOffset, localRotation, onPositionChange]);
+
   const handleReset = (e: React.MouseEvent) => {
     e.stopPropagation();
     setLocalOffset({ x: 0, y: 0 });
@@ -191,13 +244,14 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
       <div
         ref={containerRef}
         className={`
-          w-full h-full overflow-hidden relative cursor-move rounded-lg bg-gray-100 p-2 box-border
+          w-full h-full overflow-hidden relative rounded-lg bg-gray-100 p-2 box-border
           ${isActive ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-white' : ''}
+          ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}
         `}
         onClick={onActivate}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
-        onWheel={handleWheel}
+        // wheel is attached manually with passive: false to allow preventDefault
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -208,20 +262,29 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
             transform: `translate(${localOffset.x}px, ${localOffset.y}px)`,
           }}
         >
-          <img
-            src={photo.url}
-            alt={photo.name}
-            className="pointer-events-none select-none"
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',
-              transform: `scale(${localScale}) rotate(${localRotation}deg)`,
-              transformOrigin: 'center',
-              padding: '5px',
-            }}
-            draggable={false}
-          />
+          {!imgError ? (
+            <img
+              src={photo.url}
+              alt={photo.name}
+              className="pointer-events-none select-none"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                transform: `scale(${localScale}) rotate(${localRotation}deg)`,
+                transformOrigin: 'center',
+                padding: '5px',
+                display: imgLoaded ? 'block' : 'none',
+              }}
+              draggable={false}
+              onLoad={() => { setImgLoaded(true); setImgError(false); }}
+              onError={() => { setImgError(true); console.warn('PhotoSlotItem: failed to load', slot.id, photo.url); }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-sm text-gray-500 p-4">
+              Image failed to load
+            </div>
+          )}
         </div>
 
         {/* Hover controls */}
@@ -247,6 +310,80 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
               </svg>
             </button>
+          </div>
+        )}
+
+        {/* Span controls when active */}
+        {isActive && (
+          <div className="absolute top-12 left-2 flex flex-col gap-1 z-20">
+            <div className="flex gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation();
+                  const pages = usePhotoStore.getState().pages;
+                  const page = pages.find((p) => p.slots.some((s) => s.id === slot.id));
+                  if (!page) return;
+                  const curCol = slot.colSpan ?? 1;
+                  const curRow = slot.rowSpan ?? 1;
+                  usePhotoStore.getState().setSlotSpan(page.id, slot.id, Math.max(1, curCol - 1), curRow);
+                }}
+                title="Decrease width"
+                className="w-8 h-8 bg-black/60 text-white rounded-md flex items-center justify-center hover:bg-black/80"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 12H9" />
+                </svg>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation();
+                  const pages = usePhotoStore.getState().pages;
+                  const page = pages.find((p) => p.slots.some((s) => s.id === slot.id));
+                  if (!page) return;
+                  const curCol = slot.colSpan ?? 1;
+                  const curRow = slot.rowSpan ?? 1;
+                  usePhotoStore.getState().setSlotSpan(page.id, slot.id, curCol + 1, curRow);
+                }}
+                title="Increase width"
+                className="w-8 h-8 bg-black/60 text-white rounded-md flex items-center justify-center hover:bg-black/80"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 15v-6M9 12h6" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation();
+                  const pages = usePhotoStore.getState().pages;
+                  const page = pages.find((p) => p.slots.some((s) => s.id === slot.id));
+                  if (!page) return;
+                  const curCol = slot.colSpan ?? 1;
+                  const curRow = slot.rowSpan ?? 1;
+                  usePhotoStore.getState().setSlotSpan(page.id, slot.id, curCol, Math.max(1, curRow - 1));
+                }}
+                title="Decrease height"
+                className="w-8 h-8 bg-black/60 text-white rounded-md flex items-center justify-center hover:bg-black/80"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 9v6" />
+                </svg>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation();
+                  const pages = usePhotoStore.getState().pages;
+                  const page = pages.find((p) => p.slots.some((s) => s.id === slot.id));
+                  if (!page) return;
+                  const curCol = slot.colSpan ?? 1;
+                  const curRow = slot.rowSpan ?? 1;
+                  usePhotoStore.getState().setSlotSpan(page.id, slot.id, curCol, curRow + 1);
+                }}
+                title="Increase height"
+                className="w-8 h-8 bg-black/60 text-white rounded-md flex items-center justify-center hover:bg-black/80"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M9 12h6" />
+                </svg>
+              </button>
+            </div>
           </div>
         )}
 
