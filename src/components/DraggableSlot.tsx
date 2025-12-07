@@ -54,13 +54,13 @@ export const DraggableSlot: React.FC<DraggableSlotProps> = ({
         <div
           {...listeners}
           {...attributes}
-          className="absolute top-2 left-2 z-30 w-8 h-8 rounded-md bg-white/80 border border-gray-200 shadow-sm flex items-center justify-center text-gray-600
+          className="absolute top-1 left-1 z-30 w-6 h-6 sm:w-7 sm:h-7 rounded bg-white/90 border border-gray-200 shadow-sm flex items-center justify-center text-gray-600
             hover:bg-white hover:scale-105 transition-transform duration-150
             cursor-grab active:cursor-grabbing"
           aria-label="Drag slot"
           role="button"
         >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M10 6h.01M6 6h.01M14 6h.01M18 6h.01M10 12h.01M6 12h.01M14 12h.01M18 12h.01M10 18h.01M6 18h.01M14 18h.01M18 18h.01" />
           </svg>
         </div>

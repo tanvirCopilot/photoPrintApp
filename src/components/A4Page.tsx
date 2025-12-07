@@ -26,9 +26,10 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
     swapSlots,
     updateSlotPosition,
     setCurrentPageIndex,
+    activeSlotId,
+    setActiveSlotId,
   } = usePhotoStore();
 
-  const [activeSlotId, setActiveSlotId] = useState<string | null>(null);
   const [activePhotoSlotId, setActivePhotoSlotId] = useState<string | null>(null);
   const [overlayPos, setOverlayPos] = useState<{ x: number; y: number } | null>(null);
   const overlayMoveRef = useRef<((e: PointerEvent) => void) | null>(null);
@@ -214,15 +215,15 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
                     id={slot.id}
                     hasPhoto={!!photo}
                   >
-                    <PhotoSlotItem
-                      slot={slot}
-                      photo={photo}
-                      isActive={activeSlotId === slot.id}
-                      onActivate={() => setActiveSlotId(slot.id)}
-                      onPositionChange={(offsetX, offsetY, scale, rotation) =>
-                        updateSlotPosition(page.id, slot.id, offsetX, offsetY, scale, rotation)
-                      }
-                    />
+                      <PhotoSlotItem
+                        slot={slot}
+                        photo={photo}
+                        isActive={activeSlotId === slot.id}
+                        onActivate={() => setActiveSlotId(slot.id)}
+                        onPositionChange={(offsetX, offsetY, scale, rotation) =>
+                          updateSlotPosition(page.id, slot.id, offsetX, offsetY, scale, rotation)
+                        }
+                      />
                   </DraggableSlot>
                 </div>
               );

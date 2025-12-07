@@ -25,6 +25,7 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
   const [startScale, setStartScale] = useState(1);
   const [startDistance, setStartDistance] = useState(0);
   const [showFullscreen, setShowFullscreen] = useState(false);
+  const [showLayerMenu, setShowLayerMenu] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -182,6 +183,33 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
     }
   }, [isDragging, isPinching, handleMouseMove, handleTouchMove, handleEnd]);
 
+  // Close layer menu when clicking outside or pressing Escape
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (!showLayerMenu) return;
+      if (!containerRef.current) return;
+      if (!containerRef.current.contains(e.target as Node)) {
+        setShowLayerMenu(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowLayerMenu(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [showLayerMenu]);
+
+  // Close layer menu when this slot is no longer active
+  useEffect(() => {
+    if (!isActive) {
+      setShowLayerMenu(false);
+    }
+  }, [isActive]);
+
   // Attach wheel listener with passive: false so we can call preventDefault without warnings
   useEffect(() => {
     const el = containerRef.current;
@@ -223,7 +251,16 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
 
   if (!photo) {
     return (
-      <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center rounded-lg border-2 border-dashed border-gray-200">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={(e) => { e.stopPropagation(); onActivate(); }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={`w-full h-full bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center rounded-lg border-2 border-dashed border-gray-200 box-border
+          ${isActive ? 'border-2 border-indigo-400 shadow-lg bg-white' : ''}
+        `}
+      >
         <div className="text-gray-400 text-center p-4">
           <svg className="w-10 h-10 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -243,11 +280,9 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
     <>
       <div
         ref={containerRef}
-        className={`
-          w-full h-full overflow-hidden relative rounded-lg bg-gray-100 p-2 box-border
-          ${isActive ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-white' : ''}
-          ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}
-        `}
+        className={`w-full h-full overflow-hidden relative rounded-lg bg-gray-100 p-2 box-border
+          ${isActive ? 'border-2 border-indigo-400 shadow-lg bg-white' : 'border-transparent'}
+          ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
         onClick={onActivate}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
@@ -287,105 +322,109 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
           )}
         </div>
 
-        {/* Hover controls */}
-        {(isHovered || isActive) && (
-          <div className="absolute top-2 right-2 flex gap-1.5 z-10">
-            {/* Rotate button */}
-            <button
-              onClick={handleRotate}
-              className="w-8 h-8 bg-black/60 backdrop-blur text-white rounded-lg hover:bg-black/80 transition-all flex items-center justify-center"
-              title="Rotate 90°"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            {/* Fullscreen button */}
-            <button
-              onClick={handleFullscreen}
-              className="w-8 h-8 bg-black/60 backdrop-blur text-white rounded-lg hover:bg-black/80 transition-all flex items-center justify-center"
-              title="View full photo"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-              </svg>
-            </button>
-          </div>
-        )}
+        {/* Rotate button - positioned next to drag handle (left side) */}
+        <button
+          onClick={handleRotate}
+          className="absolute top-1 left-8 sm:left-9 z-20 w-6 h-6 sm:w-7 sm:h-7 bg-white/90 border border-gray-200 text-gray-600 rounded shadow-sm flex items-center justify-center hover:bg-white hover:scale-105 transition-transform"
+          title="Rotate 90°"
+        >
+          <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
 
-        {/* Span controls when active */}
-        {isActive && (
-          <div className="absolute top-12 left-2 flex flex-col gap-1 z-20">
-            <div className="flex gap-1">
-              <button
-                onClick={(e) => { e.stopPropagation();
-                  const pages = usePhotoStore.getState().pages;
-                  const page = pages.find((p) => p.slots.some((s) => s.id === slot.id));
-                  if (!page) return;
-                  const curCol = slot.colSpan ?? 1;
-                  const curRow = slot.rowSpan ?? 1;
-                  usePhotoStore.getState().setSlotSpan(page.id, slot.id, Math.max(1, curCol - 1), curRow);
-                }}
-                title="Decrease width"
-                className="w-8 h-8 bg-black/60 text-white rounded-md flex items-center justify-center hover:bg-black/80"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 12H9" />
-                </svg>
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation();
-                  const pages = usePhotoStore.getState().pages;
-                  const page = pages.find((p) => p.slots.some((s) => s.id === slot.id));
-                  if (!page) return;
-                  const curCol = slot.colSpan ?? 1;
-                  const curRow = slot.rowSpan ?? 1;
-                  usePhotoStore.getState().setSlotSpan(page.id, slot.id, curCol + 1, curRow);
-                }}
-                title="Increase width"
-                className="w-8 h-8 bg-black/60 text-white rounded-md flex items-center justify-center hover:bg-black/80"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 15v-6M9 12h6" />
-                </svg>
-              </button>
-            </div>
-            <div className="flex gap-1">
-              <button
-                onClick={(e) => { e.stopPropagation();
-                  const pages = usePhotoStore.getState().pages;
-                  const page = pages.find((p) => p.slots.some((s) => s.id === slot.id));
-                  if (!page) return;
-                  const curCol = slot.colSpan ?? 1;
-                  const curRow = slot.rowSpan ?? 1;
-                  usePhotoStore.getState().setSlotSpan(page.id, slot.id, curCol, Math.max(1, curRow - 1));
-                }}
-                title="Decrease height"
-                className="w-8 h-8 bg-black/60 text-white rounded-md flex items-center justify-center hover:bg-black/80"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 9v6" />
-                </svg>
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation();
-                  const pages = usePhotoStore.getState().pages;
-                  const page = pages.find((p) => p.slots.some((s) => s.id === slot.id));
-                  if (!page) return;
-                  const curCol = slot.colSpan ?? 1;
-                  const curRow = slot.rowSpan ?? 1;
-                  usePhotoStore.getState().setSlotSpan(page.id, slot.id, curCol, curRow + 1);
-                }}
-                title="Increase height"
-                className="w-8 h-8 bg-black/60 text-white rounded-md flex items-center justify-center hover:bg-black/80"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M9 12h6" />
-                </svg>
-              </button>
-            </div>
+        {/* Fullscreen button - next to rotate button */}
+        <button
+          onClick={handleFullscreen}
+          className="absolute top-1 left-[3.75rem] sm:left-[4.25rem] z-20 w-6 h-6 sm:w-7 sm:h-7 bg-white/90 border border-gray-200 text-gray-600 rounded shadow-sm flex items-center justify-center hover:bg-white hover:scale-105 transition-transform"
+          title="View full photo"
+        >
+          <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+          </svg>
+        </button>
+
+        {/* Layer toggle + animated controls */}
+        <div className="absolute top-1 right-1 z-20 flex flex-col items-end">
+          <div className="flex gap-1">
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowLayerMenu((s) => !s); }}
+              className="w-6 h-6 sm:w-7 sm:h-7 bg-white/90 border border-gray-200 text-gray-700 rounded shadow-sm flex items-center justify-center hover:bg-white hover:scale-105 transition-transform"
+              title="Show controls"
+            >
+              {/* layers icon */}
+              <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-violet-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M12 2l8 4-8 4-8-4 8-4zM4 10l8 4 8-4M4 18l8 4 8-4" />
+              </svg>
+            </button>
           </div>
-        )}
+
+          {/* Animated menu items */}
+          <div className="mt-1 flex flex-col items-end">
+            {[
+              { key: 'incW', render: (
+                <button
+                  key="incW"
+                  onClick={(e) => { e.stopPropagation(); const pages = usePhotoStore.getState().pages; const page = pages.find((p) => p.slots.some((s) => s.id === slot.id)); if (!page) return; const curCol = slot.colSpan ?? 1; usePhotoStore.getState().setSlotSpan(page.id, slot.id, curCol + 1, slot.rowSpan ?? 1); setShowLayerMenu(false); }}
+                  className="w-6 h-6 sm:w-7 sm:h-7 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
+                  title="Increase width"
+                >
+                  <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 15v-6M9 12h6" />
+                  </svg>
+                </button>
+              ) },
+              { key: 'decW', render: (
+                <button
+                  key="decW"
+                  onClick={(e) => { e.stopPropagation(); const pages = usePhotoStore.getState().pages; const page = pages.find((p) => p.slots.some((s) => s.id === slot.id)); if (!page) return; const curCol = slot.colSpan ?? 1; usePhotoStore.getState().setSlotSpan(page.id, slot.id, Math.max(1, curCol - 1), slot.rowSpan ?? 1); setShowLayerMenu(false); }}
+                  className="w-6 h-6 sm:w-7 sm:h-7 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
+                  title="Decrease width"
+                >
+                  <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 12H9" />
+                  </svg>
+                </button>
+              ) },
+              { key: 'incH', render: (
+                <button
+                  key="incH"
+                  onClick={(e) => { e.stopPropagation(); const pages = usePhotoStore.getState().pages; const page = pages.find((p) => p.slots.some((s) => s.id === slot.id)); if (!page) return; const curRow = slot.rowSpan ?? 1; usePhotoStore.getState().setSlotSpan(page.id, slot.id, slot.colSpan ?? 1, curRow + 1); setShowLayerMenu(false); }}
+                  className="w-6 h-6 sm:w-7 sm:h-7 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
+                  title="Increase height"
+                >
+                  <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M9 12h6" />
+                  </svg>
+                </button>
+              ) },
+              { key: 'decH', render: (
+                <button
+                  key="decH"
+                  onClick={(e) => { e.stopPropagation(); const pages = usePhotoStore.getState().pages; const page = pages.find((p) => p.slots.some((s) => s.id === slot.id)); if (!page) return; const curRow = slot.rowSpan ?? 1; usePhotoStore.getState().setSlotSpan(page.id, slot.id, slot.colSpan ?? 1, Math.max(1, curRow - 1)); setShowLayerMenu(false); }}
+                  className="w-6 h-6 sm:w-7 sm:h-7 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
+                  title="Decrease height"
+                >
+                  <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 9v6" />
+                  </svg>
+                </button>
+              ) },
+            ].map((it, i) => (
+              <div
+                key={it.key}
+                style={{
+                  transform: showLayerMenu ? 'translateY(0)' : 'translateY(-8px)',
+                  opacity: showLayerMenu ? 1 : 0,
+                  transition: `all 180ms ease ${i * 40}ms`,
+                  pointerEvents: showLayerMenu ? 'auto' : 'none',
+                }}
+              >
+                {it.render}
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Bottom controls when active */}
         {isActive && (

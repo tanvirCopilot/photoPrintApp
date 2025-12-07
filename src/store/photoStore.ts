@@ -41,6 +41,10 @@ interface PhotoStore {
 
   // Utility
   getUnassignedPhotos: () => Photo[];
+  
+  // UI selection
+  activeSlotId: string | null;
+  setActiveSlotId: (id: string | null) => void;
 }
 
 const createEmptySlots = (layout: LayoutType): PhotoSlot[] => {
@@ -87,6 +91,11 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
   currentPageIndex: 0,
   defaultLayout: 4,
   autoArrangeEnabled: true,
+  activeSlotId: null,
+  
+  setActiveSlotId: (id: string | null) => {
+    set({ activeSlotId: id });
+  },
 
   addPhotos: async (files: File[]) => {
     const validFiles = files.filter((file) =>
