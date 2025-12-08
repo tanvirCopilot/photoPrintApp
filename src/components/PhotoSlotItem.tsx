@@ -326,123 +326,130 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
         </div>
 
         {/* Unified top-left control row: drag, fullscreen, rotate, layer */}
-        <div className="absolute top-1 left-1 z-40 flex flex-wrap items-center gap-2 max-w-[90%] p-0.5">
-          {/* Drag handle - injected props from DraggableSlot */}
-          <button
-            {...(dragHandleProps || {})}
-            aria-label="Drag slot"
-            className="w-6 h-6 sm:w-7 sm:h-7 rounded bg-white/90 border border-gray-200 shadow-sm flex items-center justify-center text-gray-600 cursor-grab active:cursor-grabbing"
-            role="button"
-          >
-            <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M10 6h.01M6 6h.01M14 6h.01M18 6h.01M10 12h.01M6 12h.01M14 12h.01M18 12h.01M10 18h.01M6 18h.01M14 18h.01M18 18h.01" />
-            </svg>
-          </button>
-
-          {/* Fullscreen - always visible */}
-          <button
-            onClick={(e) => { e.stopPropagation(); handleFullscreen(e); }}
-            className="w-6 h-6 sm:w-7 sm:h-7 bg-white/90 border border-gray-200 text-gray-600 rounded shadow-sm flex items-center justify-center hover:bg-white hover:scale-105 transition-transform"
-            title="View full photo"
-          >
-            <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-            </svg>
-          </button>
-
-          {/* Rotate - visible when active */}
-          {isActive && (
-            <button
-              onClick={(e) => { e.stopPropagation(); handleRotate(e); }}
-              className="w-6 h-6 sm:w-7 sm:h-7 bg-white/90 border border-gray-200 text-gray-600 rounded shadow-sm flex items-center justify-center hover:bg-white hover:scale-105 transition-transform"
-              title="Rotate 90°"
-            >
-              <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-          )}
-
-          {/* Layer toggle - visible when active */}
-          {isActive && (
-            <div className="relative">
+        <div className="absolute top-1 left-1 right-1 z-40 p-0.5">
+          <div className="flex items-center justify-between gap-2">
+            {/* Left group: drag, fullscreen, rotate (wrap if needed) */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Drag handle - injected props from DraggableSlot */}
               <button
-                onClick={(e) => { e.stopPropagation(); setShowLayerMenu((s) => !s); }}
-                className="w-6 h-6 sm:w-7 sm:h-7 bg-white/90 border border-gray-200 text-gray-700 rounded shadow-sm flex items-center justify-center hover:bg-white hover:scale-105 transition-transform"
-                title="Show controls"
+                {...(dragHandleProps || {})}
+                aria-label="Drag slot"
+                className="w-6 h-6 sm:w-7 sm:h-7 rounded bg-white/90 border border-gray-200 shadow-sm flex items-center justify-center text-gray-600 cursor-grab active:cursor-grabbing"
+                role="button"
               >
-                <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-violet-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M12 2l8 4-8 4-8-4 8-4zM4 10l8 4 8-4M4 18l8 4 8-4" />
+                <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M10 6h.01M6 6h.01M14 6h.01M18 6h.01M10 12h.01M6 12h.01M14 12h.01M18 12h.01M10 18h.01M6 18h.01M14 18h.01M18 18h.01" />
                 </svg>
               </button>
 
-              {/* Animated menu items positioned under the layer button */}
-              <div className="absolute top-full right-0 mt-2 flex flex-col items-end">
-                {[
-                  { key: 'incW', render: (
-                    <button
-                      key="incW"
-                      onClick={(e) => { e.stopPropagation(); const pages = usePhotoStore.getState().pages; const page = pages.find((p) => p.slots.some((s) => s.id === slot.id)); if (!page) return; const curCol = slot.colSpan ?? 1; usePhotoStore.getState().setSlotSpan(page.id, slot.id, curCol + 1, slot.rowSpan ?? 1); setShowLayerMenu(false); }}
-                      className="w-6 h-6 sm:w-7 sm:h-7 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
-                      title="Increase width"
-                    >
-                      <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 15v-6M9 12h6" />
-                      </svg>
-                    </button>
-                  ) },
-                  { key: 'decW', render: (
-                    <button
-                      key="decW"
-                      onClick={(e) => { e.stopPropagation(); const pages = usePhotoStore.getState().pages; const page = pages.find((p) => p.slots.some((s) => s.id === slot.id)); if (!page) return; const curCol = slot.colSpan ?? 1; usePhotoStore.getState().setSlotSpan(page.id, slot.id, Math.max(1, curCol - 1), slot.rowSpan ?? 1); setShowLayerMenu(false); }}
-                      className="w-6 h-6 sm:w-7 sm:h-7 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
-                      title="Decrease width"
-                    >
-                      <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 12H9" />
-                      </svg>
-                    </button>
-                  ) },
-                  { key: 'incH', render: (
-                    <button
-                      key="incH"
-                      onClick={(e) => { e.stopPropagation(); const pages = usePhotoStore.getState().pages; const page = pages.find((p) => p.slots.some((s) => s.id === slot.id)); if (!page) return; const curRow = slot.rowSpan ?? 1; usePhotoStore.getState().setSlotSpan(page.id, slot.id, slot.colSpan ?? 1, curRow + 1); setShowLayerMenu(false); }}
-                      className="w-6 h-6 sm:w-7 sm:h-3.7 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
-                      title="Increase height"
-                    >
-                      <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M9 12h6" />
-                      </svg>
-                    </button>
-                  ) },
-                  { key: 'decH', render: (
-                    <button
-                      key="decH"
-                      onClick={(e) => { e.stopPropagation(); const pages = usePhotoStore.getState().pages; const page = pages.find((p) => p.slots.some((s) => s.id === slot.id)); if (!page) return; const curRow = slot.rowSpan ?? 1; usePhotoStore.getState().setSlotSpan(page.id, slot.id, slot.colSpan ?? 1, Math.max(1, curRow - 1)); setShowLayerMenu(false); }}
-                      className="w-6 h-6 sm:w-7 sm:h-3.7 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
-                      title="Decrease height"
-                    >
-                      <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 9v6" />
-                      </svg>
-                    </button>
-                  ) },
-                ].map((it, i) => (
-                  <div
-                    key={it.key}
-                    style={{
-                      transform: showLayerMenu ? 'translateY(0)' : 'translateY(-8px)',
-                      opacity: showLayerMenu ? 1 : 0,
-                      transition: `all 180ms ease ${i * 40}ms`,
-                      pointerEvents: showLayerMenu ? 'auto' : 'none',
-                    }}
-                  >
-                    {it.render}
-                  </div>
-                ))}
-              </div>
+              {/* Fullscreen - always visible */}
+              <button
+                onClick={(e) => { e.stopPropagation(); handleFullscreen(e); }}
+                className="w-6 h-6 sm:w-7 sm:h-7 bg-white/90 border border-gray-200 text-gray-600 rounded shadow-sm flex items-center justify-center hover:bg-white hover:scale-105 transition-transform"
+                title="View full photo"
+              >
+                <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+              </button>
+
+              {/* Rotate - visible when active */}
+              {isActive && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleRotate(e); }}
+                  className="w-6 h-6 sm:w-7 sm:h-7 bg-white/90 border border-gray-200 text-gray-600 rounded shadow-sm flex items-center justify-center hover:bg-white hover:scale-105 transition-transform"
+                  title="Rotate 90°"
+                >
+                  <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+              )}
             </div>
-          )}
+
+            {/* Right group: layer toggle - stays rightmost */}
+            <div className="flex-shrink-0 relative">
+              {isActive && (
+                <>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowLayerMenu((s) => !s); }}
+                    className="w-6 h-6 sm:w-7 sm:h-7 bg-white/90 border border-gray-200 text-gray-700 rounded shadow-sm flex items-center justify-center hover:bg-white hover:scale-105 transition-transform"
+                    title="Show controls"
+                  >
+                    <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-violet-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M12 2l8 4-8 4-8-4 8-4zM4 10l8 4 8-4M4 18l8 4 8-4" />
+                    </svg>
+                  </button>
+
+                  {/* Animated menu items positioned under the layer button */}
+                  <div className="absolute top-full right-0 mt-2 flex flex-col items-end">
+                    {[
+                      { key: 'incW', render: (
+                        <button
+                          key="incW"
+                          onClick={(e) => { e.stopPropagation(); const pages = usePhotoStore.getState().pages; const page = pages.find((p) => p.slots.some((s) => s.id === slot.id)); if (!page) return; const curCol = slot.colSpan ?? 1; usePhotoStore.getState().setSlotSpan(page.id, slot.id, curCol + 1, slot.rowSpan ?? 1); setShowLayerMenu(false); }}
+                          className="w-6 h-6 sm:w-7 sm:h-7 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
+                          title="Increase width"
+                        >
+                          <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 15v-6M9 12h6" />
+                          </svg>
+                        </button>
+                      ) },
+                      { key: 'decW', render: (
+                        <button
+                          key="decW"
+                          onClick={(e) => { e.stopPropagation(); const pages = usePhotoStore.getState().pages; const page = pages.find((p) => p.slots.some((s) => s.id === slot.id)); if (!page) return; const curCol = slot.colSpan ?? 1; usePhotoStore.getState().setSlotSpan(page.id, slot.id, Math.max(1, curCol - 1), slot.rowSpan ?? 1); setShowLayerMenu(false); }}
+                          className="w-6 h-6 sm:w-7 sm:h-3.7 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
+                          title="Decrease width"
+                        >
+                          <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 12H9" />
+                          </svg>
+                        </button>
+                      ) },
+                      { key: 'incH', render: (
+                        <button
+                          key="incH"
+                          onClick={(e) => { e.stopPropagation(); const pages = usePhotoStore.getState().pages; const page = pages.find((p) => p.slots.some((s) => s.id === slot.id)); if (!page) return; const curRow = slot.rowSpan ?? 1; usePhotoStore.getState().setSlotSpan(page.id, slot.id, slot.colSpan ?? 1, curRow + 1); setShowLayerMenu(false); }}
+                          className="w-6 h-6 sm:w-7 sm:h-3.7 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
+                          title="Increase height"
+                        >
+                          <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M9 12h6" />
+                          </svg>
+                        </button>
+                      ) },
+                      { key: 'decH', render: (
+                        <button
+                          key="decH"
+                          onClick={(e) => { e.stopPropagation(); const pages = usePhotoStore.getState().pages; const page = pages.find((p) => p.slots.some((s) => s.id === slot.id)); if (!page) return; const curRow = slot.rowSpan ?? 1; usePhotoStore.getState().setSlotSpan(page.id, slot.id, slot.colSpan ?? 1, Math.max(1, curRow - 1)); setShowLayerMenu(false); }}
+                          className="w-6 h-6 sm:w-7 sm:h-3.7 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
+                          title="Decrease height"
+                        >
+                          <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 9v6" />
+                          </svg>
+                        </button>
+                      ) },
+                    ].map((it, i) => (
+                      <div
+                        key={it.key}
+                        style={{
+                          transform: showLayerMenu ? 'translateY(0)' : 'translateY(-8px)',
+                          opacity: showLayerMenu ? 1 : 0,
+                          transition: `all 180ms ease ${i * 40}ms`,
+                          pointerEvents: showLayerMenu ? 'auto' : 'none',
+                        }}
+                      >
+                        {it.render}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Bottom controls when active */}
