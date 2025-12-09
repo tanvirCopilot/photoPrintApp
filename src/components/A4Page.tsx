@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   DndContext,
@@ -60,6 +60,75 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
   } | null>(null);
 
   const MIN_FRACTION = 0.05;
+  const GAP = 8; // px, matches the style gap used in the grid
+
+  // pixel sizes for columns/rows (computed from page.colSizes/page.rowSizes fractions)
+  const [colPx, setColPx] = useState<number[]>([]);
+  const [rowPx, setRowPx] = useState<number[]>([]);
+
+  // recompute pixel sizes when layout, fractions or available size changes
+  useLayoutEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    const cols = layout.cols;
+    const rows = layout.rows;
+
+    // Fractions: prefer page.colSizes/page.rowSizes, fall back to equal distribution
+    const colFracs = page.colSizes && page.colSizes.length === cols ? page.colSizes : Array.from({ length: cols }, () => 1 / cols);
+    const rowFracs = page.rowSizes && page.rowSizes.length === rows ? page.rowSizes : Array.from({ length: rows }, () => 1 / rows);
+
+    const availableWidth = Math.max(0, rect.width - (Math.max(0, cols - 1) * GAP));
+    const availableHeight = Math.max(0, rect.height - (Math.max(0, rows - 1) * GAP));
+
+    const newColPx = colFracs.map((f) => Math.max(1, Math.round(f * availableWidth)));
+    const newRowPx = rowFracs.map((f) => Math.max(1, Math.round(f * availableHeight)));
+
+    // Ensure rounding doesn't break total - adjust last item
+    const sumCol = newColPx.reduce((a, b) => a + b, 0);
+    if (sumCol !== Math.round(availableWidth)) {
+      const diff = Math.round(availableWidth) - sumCol;
+      newColPx[newColPx.length - 1] = Math.max(1, newColPx[newColPx.length - 1] + diff);
+    }
+    const sumRow = newRowPx.reduce((a, b) => a + b, 0);
+    if (sumRow !== Math.round(availableHeight)) {
+      const diffR = Math.round(availableHeight) - sumRow;
+      newRowPx[newRowPx.length - 1] = Math.max(1, newRowPx[newRowPx.length - 1] + diffR);
+    }
+
+    setColPx(newColPx);
+    setRowPx(newRowPx);
+  }, [gridRef.current, page.colSizes, page.rowSizes, layout.cols, layout.rows, GAP]);
+
+  // Recompute on window resize
+  useEffect(() => {
+    const onResize = () => {
+      const ev = new Event('resize-grid');
+      window.dispatchEvent(ev);
+    };
+    window.addEventListener('resize', onResize);
+    const onResizeGrid = () => {
+      // trigger the useLayoutEffect by touching gridRef current (no-op)
+      if (gridRef.current) {
+        // simply call getBoundingClientRect to ensure layout effect sees updated size
+        gridRef.current.getBoundingClientRect();
+        // force a state update by reusing existing sizes; useLayoutEffect depends on gridRef.current
+        // we can call setColPx/setRowPx after a short microtask to trigger recompute
+        setTimeout(() => {
+          if (gridRef.current) {
+            const ev2 = new Event('resize-grid-inner');
+            window.dispatchEvent(ev2);
+          }
+        }, 0);
+      }
+    };
+    window.addEventListener('resize-grid', onResizeGrid);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('resize-grid', onResizeGrid);
+    };
+  }, []);
 
   const startResize = (type: 'col' | 'row', index: number, clientX: number, clientY: number) => {
     const el = gridRef.current;
@@ -71,7 +140,10 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
     const onMove = (e: PointerEvent) => {
       if (!resizingRef.current) return;
       const deltaPx = type === 'col' ? e.clientX - resizingRef.current.startPos : e.clientY - resizingRef.current.startPos;
-      const totalPx = type === 'col' ? rect.width : rect.height;
+      const cols = layout.cols;
+      const rows = layout.rows;
+      // available pixels excludes the gaps between tracks
+      const totalPx = type === 'col' ? (rect.width - (Math.max(0, cols - 1) * GAP)) : (rect.height - (Math.max(0, rows - 1) * GAP));
       if (!totalPx) return;
       const deltaFrac = deltaPx / totalPx;
 
@@ -138,6 +210,20 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
     return photos.find((p) => p.id === photoId) || null;
   };
 
+  const calculateExtraGap = (index: number) => {
+    const padding = 5.5; // px, half of GAP
+    switch (index) {
+      case 1:
+        return padding + index * GAP/2;
+      case 2:
+        return padding + GAP + GAP/2;
+      case 3:
+        return padding + GAP + GAP + GAP/2;
+      default:
+        return 0;
+    }
+  }
+
   const activeSlot = page.slots.find((s) => s.id === activePhotoSlotId);
   const activePhoto = activeSlot ? getPhoto(activeSlot.photoId) : null;
 
@@ -178,16 +264,16 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
             ref={gridRef}
             className="w-full h-full relative box-border"
             style={{
-              padding: '24px',
+              // padding: '24px',
             }}
           >
             {/* actual grid */}
             <div
               className="w-full h-full grid"
               style={{
-                gridTemplateRows: page.rowSizes && page.rowSizes.length > 0 ? page.rowSizes.map((r) => `${r * 100}%`).join(' ') : `repeat(${layout.rows}, 1fr)`,
-                gridTemplateColumns: page.colSizes && page.colSizes.length > 0 ? page.colSizes.map((c) => `${c * 100}%`).join(' ') : `repeat(${layout.cols}, 1fr)`,
-                gap: '8px',
+                gridTemplateRows: rowPx && rowPx.length > 0 ? rowPx.map((r) => `${r}px`).join(' ') : `repeat(${layout.rows}, 1fr)`,
+                gridTemplateColumns: colPx && colPx.length > 0 ? colPx.map((c) => `${c}px`).join(' ') : `repeat(${layout.cols}, 1fr)`,
+                gap: `${GAP}px`,
                 width: '100%',
                 height: '100%',
               }}
@@ -232,18 +318,19 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
             </div>
 
             {/* Vertical resizers between columns */}
-            {page.colSizes && page.colSizes.length > 1 && (
-              page.colSizes.slice(0, -1).map((_, i) => {
-                const leftPct = page.colSizes.slice(0, i + 1).reduce((a, b) => a + b, 0) * 100;
+            {((page.colSizes && page.colSizes.length > 1) || colPx.length > 1) && (
+              (colPx.length > 1 ? colPx.slice(0, -1) : page.colSizes!.slice(0, -1)).map((_, i) => {
+                // boundary after first i+1 columns
+                const boundary = colPx.slice(0, i + 1).reduce((a, b) => a + b, 0) + calculateExtraGap(i+1);
                 return (
                   <div
                     key={`col-resizer-${i}`}
                     onPointerDown={(e) => startResize('col', i + 1, e.clientX, e.clientY)}
                     style={{
                       position: 'absolute',
-                      top: '24px',
-                      bottom: '24px',
-                      left: `${leftPct}%`,
+                      top: `8px`,
+                      bottom: `8px`,
+                      left: `${boundary}px`,
                       width: '12px',
                       transform: 'translateX(-50%)',
                       cursor: 'col-resize',
@@ -257,18 +344,18 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
             )}
 
             {/* Horizontal resizers between rows */}
-            {page.rowSizes && page.rowSizes.length > 1 && (
-              page.rowSizes.slice(0, -1).map((_, i) => {
-                const topPct = page.rowSizes.slice(0, i + 1).reduce((a, b) => a + b, 0) * 100;
+            {((page.rowSizes && page.rowSizes.length > 1) || rowPx.length > 1) && (
+              (rowPx.length > 1 ? rowPx.slice(0, -1) : page.rowSizes!.slice(0, -1)).map((_, i) => {
+                const boundary = rowPx.slice(0, i + 1).reduce((a, b) => a + b, 0) + calculateExtraGap(i+1);
                 return (
                   <div
                     key={`row-resizer-${i}`}
                     onPointerDown={(e) => startResize('row', i + 1, e.clientX, e.clientY)}
                     style={{
                       position: 'absolute',
-                      left: '24px',
-                      right: '24px',
-                      top: `${topPct}%`,
+                      left: `8px`,
+                      right: `8px`,
+                      top: `${boundary}px`,
                       height: '12px',
                       transform: 'translateY(-50%)',
                       cursor: 'row-resize',
