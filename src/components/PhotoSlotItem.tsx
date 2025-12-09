@@ -455,7 +455,7 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
         {/* Bottom controls when active - modern pill indicator + rounded reset button */}
         {isActive && (
           <div className="absolute bottom-1 left-3 right-3 flex justify-between items-center z-10">
-            <div style={{padding: "2px"}} className="flex items-center gap-2 bg-white/85 backdrop-blur-sm px-3 py-1 rounded-md shadow-sm border border-gray-200">
+            <div style={{padding: "2px"}} className="flex items-center gap-2 bg-white/85 backdrop-blur-sm px-3 py-1 rounded-sm shadow-sm border border-gray-200">
               <svg className="w-4 h-4 text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
                 <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
               </svg>
@@ -466,7 +466,7 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
               onClick={handleReset}
               aria-label="Reset photo transform"
               style={{padding: "2px 5px"}}
-              className="flex items-center gap-2 px-3 py-1 bg-violet-600 text-white text-sm font-semibold rounded-md shadow hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-300 transition-colors"
+              className="flex items-center gap-2 px-3 py-1 bg-violet-600 text-white text-sm font-semibold rounded-sm shadow hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-300 transition-colors"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
                 <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 10a9 9 0 111.4 4.7L3 21l6.3-1.4A9 9 0 013 10z" />

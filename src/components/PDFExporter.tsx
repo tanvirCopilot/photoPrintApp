@@ -206,12 +206,14 @@ export const PDFExporter: React.FC = () => {
       <button
         onClick={generatePDF}
         disabled={!hasContent || isGenerating}
+        aria-label="Export PDF"
+        style={{marginRight: "5px", padding: "2px 5px"}}
         className={`
-          py-2.5 px-5 rounded-xl font-medium transition-all duration-300
-          flex items-center gap-2 text-sm
+          py-2.5 px-5 rounded-sm font-medium transition-all duration-300
+          flex items-center gap-1 text-sm focus:outline-none
           ${
             hasContent && !isGenerating
-              ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40'
+              ? 'bg-gradient-to-r from-violet-500 to-violet-600 text-white hover:from-violet-600 hover:to-violet-700 shadow-lg shadow-violet-500/25 focus:ring-2 focus:ring-violet-300'
               : 'bg-slate-700 text-slate-500 cursor-not-allowed'
           }
         `}
@@ -237,7 +239,7 @@ export const PDFExporter: React.FC = () => {
           </>
         ) : (
           <>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"

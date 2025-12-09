@@ -21,7 +21,7 @@ function App() {
         <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/25">
+              <div className="w-11 h-11 bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/25">
                 <svg
                   className="w-6 h-6 text-white"
                   fill="none"
@@ -73,7 +73,7 @@ function App() {
             <div className="bg-slate-800/50 backdrop-blur rounded-2xl p-1.5 flex gap-1">
               <button
                 onClick={() => setSidebarTab('upload')}
-                className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-medium transition-all ${
+                className={`flex-1 py-2.5 px-4 rounded-sm text-sm font-medium transition-all ${
                   sidebarTab === 'upload'
                     ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg shadow-purple-500/25'
                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
@@ -83,7 +83,7 @@ function App() {
               </button>
               <button
                 onClick={() => setSidebarTab('layout')}
-                className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-medium transition-all ${
+                className={`flex-1 py-2.5 px-4 rounded-sm text-sm font-medium transition-all ${
                   sidebarTab === 'layout'
                     ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg shadow-purple-500/25'
                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
@@ -93,7 +93,7 @@ function App() {
               </button>
               <button
                 onClick={() => setSidebarTab('pages')}
-                className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-medium transition-all ${
+                className={`flex-1 py-2.5 px-4 rounded-sm text-sm font-medium transition-all ${
                   sidebarTab === 'pages'
                     ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg shadow-purple-500/25'
                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
