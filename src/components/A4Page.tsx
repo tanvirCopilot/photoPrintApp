@@ -263,9 +263,6 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
           <div
             ref={gridRef}
             className="w-full h-full relative box-border"
-            style={{
-              // padding: '24px',
-            }}
           >
             {/* actual grid */}
             <div

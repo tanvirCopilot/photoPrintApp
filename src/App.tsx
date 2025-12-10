@@ -70,7 +70,7 @@ function App() {
           {/* Left Sidebar - Controls */}
           <div className="w-80 flex-shrink-0 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
             {/* Tab Navigation */}
-            <div className="bg-slate-800/50 backdrop-blur rounded-2xl p-1.5 flex gap-1">
+            <div className="bg-slate-800/50 backdrop-blur rounded p-1.5 flex gap-1">
               <button
                 onClick={() => setSidebarTab('upload')}
                 className={`flex-1 py-2.5 px-4 rounded-sm text-sm font-medium transition-all ${
