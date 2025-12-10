@@ -232,26 +232,26 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
   return (
     <div
       className={`
-        flex flex-col items-center h-full
+        flex flex-col items-center w-full h-full
         ${isCurrentPage ? '' : 'opacity-70 hover:opacity-100 transition-opacity'}
       `}
       onClick={() => setCurrentPageIndex(pageIndex)}
     >
-      {/* A4 Page Container - Large size with proper A4 aspect ratio */}
+      {/* A4 Page Container - Full width on mobile, height-based on larger screens */}
       <div
         className={`
           bg-white rounded-lg overflow-hidden
           shadow-2xl shadow-black/30
           ring-1 ring-white/10
           transition-all duration-300
+          w-full sm:w-auto sm:h-full
           ${isCurrentPage ? 'ring-2 ring-violet-400/50' : ''}
         `}
         style={{
-          width: 'auto',
-          height: '100%',
-          maxHeight: 'calc(100vh - 200px)',
           aspectRatio: '210 / 297', // A4 aspect ratio
           padding: '10px',
+          maxWidth: '100%',
+          maxHeight: 'calc(100vh - 180px)',
         }}
       >
         <DndContext
