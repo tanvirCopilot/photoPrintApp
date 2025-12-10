@@ -15,12 +15,12 @@ export const PageManager: React.FC = () => {
   const currentPage = pages[currentPageIndex];
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur rounded-xl sm:rounded-2xl p-3 sm:p-4 flex flex-col h-full touch-manipulation">
-      <div className="flex items-center justify-between mb-3 sm:mb-4">
-        <h3 className="text-xs sm:text-sm font-semibold text-slate-200">Page Navigator</h3>
+    <div className="bg-slate-800/50 backdrop-blur rounded sm:rounded p-3 sm:p-4 flex flex-col h-full touch-manipulation">
+      <div className="flex items-center justify-between mb-3 sm:mb-4 !px-2">
+        <h3 className="text-xs sm:text-sm font-semibold text-slate-200 !py-3 ">Page Navigator</h3>
         <button
           onClick={() => addPage(defaultLayout)}
-          className="px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white text-[10px] sm:text-xs font-medium rounded-sm hover:from-violet-600 hover:to-purple-600 active:scale-95 transition-all shadow-lg shadow-violet-500/25 flex items-center gap-1 sm:gap-1.5"
+          className="!px-2 sm:px-3 !py-1 bg-gradient-to-r from-violet-500 to-purple-500 text-white text-[10px] sm:text-xs font-medium rounded-sm hover:from-violet-600 hover:to-purple-600 active:scale-95 transition-all shadow-lg shadow-violet-500/25 flex items-center gap-1 sm:gap-1.5"
         >
           <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -38,7 +38,7 @@ export const PageManager: React.FC = () => {
       ) : (
         <>
           {/* Page Navigation */}
-            <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4 py-2 bg-slate-700/30 rounded-sm">
+          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4 !py-2 bg-slate-700/30 rounded-sm">
             <button
               onClick={() => setCurrentPageIndex(Math.max(0, currentPageIndex - 1))}
               disabled={currentPageIndex === 0}
@@ -65,18 +65,17 @@ export const PageManager: React.FC = () => {
           </div>
 
           {/* Page Thumbnails */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <div className="grid grid-cols-4 sm:grid-cols-3 gap-1.5 sm:gap-2">
+          <div className="flex-1 overflow-y-auto custom-scrollbar !p-3">
+            <div className="grid grid-cols-4 sm:grid-cols-3 gap-3 sm:gap-4">
               {pages.map((page, index) => (
                 <button
                   key={page.id}
                   onClick={() => setCurrentPageIndex(index)}
                   className={`
                     relative aspect-[210/297] rounded-sm transition-all duration-200 active:scale-95
-                    ${
-                      index === currentPageIndex
-                        ? 'ring-2 ring-violet-400 bg-violet-500/20'
-                        : 'ring-1 ring-slate-600/50 bg-slate-700/30 hover:ring-slate-500 hover:bg-slate-700/50'
+                    ${index === currentPageIndex
+                      ? 'ring-2 ring-violet-400 bg-violet-500/20'
+                      : 'ring-1 ring-slate-600/50 bg-slate-700/30 hover:ring-slate-500 hover:bg-slate-700/50'
                     }
                   `}
                 >
@@ -92,10 +91,10 @@ export const PageManager: React.FC = () => {
 
           {/* Page Actions */}
           {currentPage && (
-            <div className="flex gap-1.5 sm:gap-2 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-700/50">
+            <div className="flex gap-2 sm:gap-3 mt-3 sm:mt-4 !py-3 sm:pt-4 border-t border-slate-700/50">
               <button
                 onClick={() => duplicatePage(currentPage.id)}
-                className="flex-1 px-2 sm:px-3 py-2 sm:py-2.5 text-[10px] sm:text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 active:bg-slate-700/70 rounded-sm transition-all flex items-center justify-center gap-1 sm:gap-1.5 ring-1 ring-slate-600/50"
+                className="flex-1 px-2 sm:px-3 !py-2 sm:py-2.5 text-[10px] sm:text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 active:bg-slate-700/70 rounded-sm transition-all flex items-center justify-center gap-1 sm:gap-1.5 ring-1 ring-slate-600/50"
               >
                 <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
