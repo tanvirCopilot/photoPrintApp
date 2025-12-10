@@ -10,13 +10,14 @@ export const PhotoGallery: React.FC = () => {
 
   return (
     <div className="bg-slate-800/50 backdrop-blur rounded-xl sm:rounded-2xl p-3 sm:p-4">
-      <div className="flex items-center justify-between mb-3 sm:mb-4">
+      <div style={{padding: "10px 5px"}} className="flex items-center justify-between mb-3 sm:mb-4">
         <h3 className="text-xs sm:text-sm font-semibold text-slate-200">
           Your Photos
         </h3>
         <button
           onClick={clearPhotos}
-          className="px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 active:bg-red-500/20 rounded-lg transition-colors touch-manipulation"
+          style={{padding: "2px 5px"}}
+          className="px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs bg-red-500 text-white hover:bg-red-600 active:bg-red-700 rounded transition-colors touch-manipulation"
         >
           Clear All
         </button>

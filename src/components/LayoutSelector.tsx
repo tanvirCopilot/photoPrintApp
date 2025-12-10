@@ -19,15 +19,15 @@ export const LayoutSelector: React.FC = () => {
   const currentLayout = currentPage?.layout ?? defaultLayout;
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur rounded-xl sm:rounded-2xl p-3 sm:p-4">
-      <h3 className="text-xs sm:text-sm font-semibold text-slate-200 mb-3 sm:mb-4">Grid Layout</h3>
-      <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+    <div className="bg-slate-800/50 backdrop-blur rounded sm:rounded p-3 sm:p-4">
+      <h3 className="text-xs sm:text-sm font-semibold text-slate-200 mb-3 sm:mb-4 !py-2 !px-1">Grid Layout</h3>
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 !p-2">
         {layouts.map((config) => (
           <button
             key={config.type}
             onClick={() => handleLayoutChange(config.type)}
             className={`
-              relative p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all duration-200 touch-manipulation
+              relative p-1.5 sm:p-2 rounded sm:rounded transition-all duration-200 touch-manipulation
               ${
                 currentLayout === config.type
                   ? 'bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/25 ring-2 ring-violet-400/50'

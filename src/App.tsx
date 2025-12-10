@@ -18,7 +18,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
       {/* Header */}
-      <header className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-50">
+      <header className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-50 !p-3">
         <div className="max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3">
           <div className="flex items-center justify-between gap-2">
             {/* Logo & Title */}
@@ -62,8 +62,8 @@ function App() {
 
             {/* Mobile stats (inline with header) */}
             <div className="flex sm:hidden items-center gap-2 text-slate-400 text-xs">
-              <span className="bg-slate-800/60 px-2 py-1 rounded-full">{photos.length} 📷</span>
-              <span className="bg-slate-800/60 px-2 py-1 rounded-full">{pages.length} 📄</span>
+              <span className="bg-slate-800/60 !px-2 !py-1 rounded">{photos.length} 📷</span>
+              <span className="bg-slate-800/60 !px-2 !py-1 rounded">{pages.length} 📄</span>
             </div>
 
             {/* Export Button in Header */}
@@ -90,14 +90,14 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-1 max-w-[1920px] w-full mx-auto px-2 sm:px-4 lg:px-8 py-2 sm:py-4 lg:py-6 overflow-hidden">
-        <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 lg:gap-6 h-full">
+        <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 lg:gap-6 h-full !p-3">
           
           {/* Mobile/Tablet: Horizontal Tab Bar (always visible on small screens) */}
           <div className="lg:hidden flex-shrink-0">
-            <div className="bg-slate-800/60 backdrop-blur rounded-lg p-1 flex gap-1">
+            <div className="bg-slate-800/60 backdrop-blur rounded p-1 flex gap-1">
               <button
                 onClick={() => { setSidebarTab('upload'); setMobileMenuOpen(true); }}
-                className={`flex-1 py-2 px-2 sm:px-4 rounded text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 !py-1 px-2 sm:px-4 rounded text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
                   sidebarTab === 'upload' && mobileMenuOpen
                     ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg shadow-purple-500/25'
                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
@@ -110,7 +110,7 @@ function App() {
               </button>
               <button
                 onClick={() => { setSidebarTab('layout'); setMobileMenuOpen(true); }}
-                className={`flex-1 py-2 px-2 sm:px-4 rounded text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 !py-1 px-2 sm:px-4 rounded text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
                   sidebarTab === 'layout' && mobileMenuOpen
                     ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg shadow-purple-500/25'
                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
@@ -123,7 +123,7 @@ function App() {
               </button>
               <button
                 onClick={() => { setSidebarTab('pages'); setMobileMenuOpen(true); }}
-                className={`flex-1 py-2 px-2 sm:px-4 rounded text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 !py-1 px-2 sm:px-4 rounded text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
                   sidebarTab === 'pages' && mobileMenuOpen
                     ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg shadow-purple-500/25'
                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
@@ -136,7 +136,7 @@ function App() {
               </button>
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex-1 py-2 px-2 sm:px-4 rounded text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 !py-1 px-2 sm:px-4 rounded text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
                   !mobileMenuOpen
                     ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg shadow-purple-500/25'
                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
@@ -155,7 +155,7 @@ function App() {
           <div className={`lg:hidden transition-all duration-300 ease-in-out overflow-hidden ${
             mobileMenuOpen ? 'max-h-[50vh] opacity-100' : 'max-h-0 opacity-0'
           }`}>
-            <div className="bg-slate-800/40 backdrop-blur-lg rounded-xl p-3 sm:p-4 overflow-y-auto max-h-[48vh] custom-scrollbar">
+            <div className="bg-slate-800/40 backdrop-blur-lg rounded p-3 sm:p-4 overflow-y-auto max-h-[48vh] custom-scrollbar">
               {sidebarTab === 'upload' && (
                 <div className="space-y-3">
                   <PhotoUploader />
@@ -177,7 +177,7 @@ function App() {
           {/* Desktop: Left Sidebar - Controls */}
           <div className="hidden lg:flex w-80 flex-shrink-0 flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
             {/* Tab Navigation */}
-            <div className="bg-slate-800/50 backdrop-blur rounded-lg p-1.5 flex gap-1">
+            <div className="bg-slate-800/50 backdrop-blur rounded p-1.5 flex gap-1">
               <button
                 onClick={() => setSidebarTab('upload')}
                 className={`flex-1 py-2.5 px-4 rounded text-sm font-medium transition-all ${

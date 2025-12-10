@@ -8,8 +8,8 @@ export const SettingsPanel: React.FC = () => {
   const unassignedCount = getUnassignedPhotos().length;
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur rounded-xl sm:rounded-2xl p-3 sm:p-4 touch-manipulation">
-      <h3 className="text-xs sm:text-sm font-semibold text-slate-200 mb-3 sm:mb-4">Settings</h3>
+    <div className="bg-slate-800/50 backdrop-blur rounded sm:rounded p-3 sm:p-4 !mt-3 !mb-5 !px-2 touch-manipulation">
+      <h3 className="text-xs sm:text-sm font-semibold text-slate-200 !mb-3 sm:mb-4 !pt-3">Settings</h3>
 
       {/* Auto-arrange toggle */}
       <div className="flex items-center justify-between py-2">
@@ -20,17 +20,19 @@ export const SettingsPanel: React.FC = () => {
         <button
           onClick={() => setAutoArrangeEnabled(!autoArrangeEnabled)}
           className={`
-            relative w-10 h-5 sm:w-12 sm:h-6 rounded-full transition-all duration-300 active:scale-95
+            relative w-10 h-5 rounded-full transition-all duration-200 active:scale-95
             ${autoArrangeEnabled 
-              ? 'bg-gradient-to-r from-violet-500 to-purple-500 shadow-lg shadow-violet-500/25' 
+              ? 'bg-violet-500/90 shadow-sm' 
               : 'bg-slate-600'
             }
           `}
+          aria-pressed={autoArrangeEnabled}
+          aria-label="Toggle auto arrange"
         >
           <span
             className={`
-              absolute top-0.5 sm:top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 shadow-md
-              ${autoArrangeEnabled ? 'translate-x-5 sm:translate-x-7' : 'translate-x-0.5 sm:translate-x-1'}
+              absolute top-0.5 w-3.75 h-3.75 right-5 bg-white rounded-full transition-transform duration-200 shadow-md
+              ${autoArrangeEnabled ? 'translate-x-4' : 'translate-x-0'}
             `}
           />
         </button>

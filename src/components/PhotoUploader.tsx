@@ -41,7 +41,7 @@ export const PhotoUploader: React.FC = () => {
       {/* Animated background gradient */}
       <div className={`absolute inset-0 bg-gradient-to-br from-violet-500/5 to-fuchsia-500/5 transition-opacity duration-300 ${isDragActive ? 'opacity-100' : 'opacity-0'}`} />
       
-      <div className="relative flex flex-col items-center gap-2 sm:gap-4">
+      <div style={{padding: "5px"}} className="relative flex flex-col items-center gap-2 sm:gap-4">
         <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-300 ${
           isDragActive 
             ? 'bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30' 
@@ -76,7 +76,7 @@ export const PhotoUploader: React.FC = () => {
           </>
         )}
         {photos.length > 0 && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-violet-500/20 rounded-full">
+          <div style={{padding: "1px 8px", margin: "5px 0"}} className="flex items-center gap-2 px-3 py-1.5 bg-violet-500/20 rounded">
             <div className="w-2 h-2 bg-violet-400 rounded-full animate-pulse" />
             <p className="text-violet-300 text-xs sm:text-sm font-medium">
               {photos.length} photo{photos.length !== 1 ? 's' : ''} ready
