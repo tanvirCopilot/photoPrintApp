@@ -283,6 +283,7 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
     <>
       <div
         ref={containerRef}
+        data-slot-id={slot.id}
         className={`w-full h-full overflow-hidden relative rounded-lg bg-gray-100 p-2 box-border
           ${isActive ? 'border-2 border-indigo-400 shadow-lg bg-white' : 'border-transparent'}
           ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}

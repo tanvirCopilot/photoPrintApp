@@ -68,95 +68,156 @@ export const PDFExporter: React.FC = () => {
           const availableWidth = slotWidth - 2 * slotPaddingMM;
           const availableHeight = slotHeight - 2 * slotPaddingMM;
 
-          // Calculate image dimensions to fit slot while maintaining aspect ratio (contain)
+          // Calculate image dimensions while ALWAYS maintaining aspect ratio
           // When rotated 90 or 270 degrees, the effective aspect ratio is inverted
           const effectivePhotoWidth = isRotated90or270 ? photo.height : photo.width;
           const effectivePhotoHeight = isRotated90or270 ? photo.width : photo.height;
           const photoAspect = effectivePhotoWidth / effectivePhotoHeight;
           const slotAspect = availableWidth / availableHeight;
 
-          // base (contained) size inside slot using effective (post-rotation) dimensions
+          // Base size: fit image inside slot (scale=1 means image fits entirely in slot)
           let baseWidth: number;
           let baseHeight: number;
 
           if (photoAspect > slotAspect) {
-            // photo is wider -> width fills available width
+            // photo is wider -> width fills available width at scale=1
             baseWidth = availableWidth;
             baseHeight = availableWidth / photoAspect;
           } else {
-            // photo is taller -> height fills available height
+            // photo is taller -> height fills available height at scale=1
             baseHeight = availableHeight;
             baseWidth = availableHeight * photoAspect;
           }
 
-          // apply user scale (scale 1 = fit-to-slot)
-          const imgWidth = baseWidth * (slot.scale ?? 1);
-          const imgHeight = baseHeight * (slot.scale ?? 1);
+          // Apply user scale - ALWAYS maintain aspect ratio, no clamping
+          // Scale > 1 means zoom in (image larger than slot, will be clipped by slot bounds)
+          // Scale < 1 means zoom out (image smaller than slot)
+          const userScale = slot.scale ?? 1;
+          const drawWidth = baseWidth * userScale;
+          const drawHeight = baseHeight * userScale;
 
-          // Clamp to available area (respecting padding)
-          const drawWidth = Math.min(availableWidth, imgWidth);
-          const drawHeight = Math.min(availableHeight, imgHeight);
+          // Center the scaled image in the slot
+          let imgX = x + slotPaddingMM + (availableWidth - drawWidth) / 2;
+          let imgY = y + slotPaddingMM + (availableHeight - drawHeight) / 2;
 
-          // Center the image in the slot (account for padding)
-          const imgX = x + slotPaddingMM + (availableWidth - drawWidth) / 2;
-          const imgY = y + slotPaddingMM + (availableHeight - drawHeight) / 2;
+          // Convert user pan offsets (pixels in UI) to mm for PDF positioning
+          try {
+            const el = document.querySelector(`[data-slot-id="${slot.id}"]`) as HTMLElement | null;
+            if (el && (slot.offsetX || slot.offsetY)) {
+              // Calculate px per mm based on the UI slot size vs print slot size
+              const pxPerMMx = el.clientWidth / slotWidth;
+              const pxPerMMy = el.clientHeight / slotHeight;
+
+              if (pxPerMMx > 0 && pxPerMMy > 0) {
+                const offsetXmm = (slot.offsetX || 0) / pxPerMMx;
+                const offsetYmm = (slot.offsetY || 0) / pxPerMMy;
+
+                // Apply pan offsets
+                imgX += offsetXmm;
+                imgY += offsetYmm;
+              }
+            }
+          } catch (err) {
+            console.warn('Could not compute slot DOM size for offset conversion', err);
+          }
 
           try {
             // Convert photo to base64
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
             const img = new Image();
             img.crossOrigin = 'anonymous';
 
             await new Promise<void>((resolve, reject) => {
-              img.onload = () => {
-                try {
-                  // Prepare a canvas that will contain the rotated image
-                  // We draw the original image into an offscreen canvas and then export it.
-                  // If rotation is 90 or 270, swap width/height when drawing into rotated canvas.
-
-                  if (rot === 0) {
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    ctx?.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx?.drawImage(img, 0, 0);
-                  } else {
-                    const radians = (rot * Math.PI) / 180;
-                    // create temp canvas to draw rotated image
-                    const temp = document.createElement('canvas');
-                    if (isRotated90or270) {
-                      temp.width = img.height;
-                      temp.height = img.width;
-                    } else {
-                      temp.width = img.width;
-                      temp.height = img.height;
-                    }
-                    const tctx = temp.getContext('2d');
-                    if (tctx) {
-                      tctx.translate(temp.width / 2, temp.height / 2);
-                      tctx.rotate(radians);
-                      tctx.drawImage(img, -img.width / 2, -img.height / 2);
-                    }
-                    // copy rotated to main canvas
-                    canvas.width = temp.width;
-                    canvas.height = temp.height;
-                    ctx?.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx?.drawImage(temp, 0, 0);
-                  }
-
-                  resolve();
-                } catch (err) {
-                  reject(err);
-                }
-              };
+              img.onload = () => resolve();
               img.onerror = reject;
               img.src = photo.url;
             });
 
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            // Create canvas for the final cropped/clipped image
+            // We'll draw the image at the correct scale and position, then crop to slot bounds
+            
+            // First, handle rotation if needed
+            let rotatedCanvas: HTMLCanvasElement;
+            if (rot === 0) {
+              rotatedCanvas = document.createElement('canvas');
+              rotatedCanvas.width = img.width;
+              rotatedCanvas.height = img.height;
+              const rctx = rotatedCanvas.getContext('2d');
+              rctx?.drawImage(img, 0, 0);
+            } else {
+              const radians = (rot * Math.PI) / 180;
+              rotatedCanvas = document.createElement('canvas');
+              if (isRotated90or270) {
+                rotatedCanvas.width = img.height;
+                rotatedCanvas.height = img.width;
+              } else {
+                rotatedCanvas.width = img.width;
+                rotatedCanvas.height = img.height;
+              }
+              const rctx = rotatedCanvas.getContext('2d');
+              if (rctx) {
+                rctx.translate(rotatedCanvas.width / 2, rotatedCanvas.height / 2);
+                rctx.rotate(radians);
+                rctx.drawImage(img, -img.width / 2, -img.height / 2);
+              }
+            }
 
-            // Add image into PDF at calculated mm dimensions
-            pdf.addImage(imgData, 'JPEG', imgX, imgY, drawWidth, drawHeight);
+            // Now create the final output canvas that represents the slot area
+            // We will ensure the exported image never crops: if the user's zoom would crop
+            // we reduce the effective scale so the full image fits inside the slot.
+            const DPI = 300; // high quality for print
+            const outputWidthPx = Math.round(availableWidth * DPI / 25.4);
+            const outputHeightPx = Math.round(availableHeight * DPI / 25.4);
+
+            // Calculate maximum scale that still fits the image entirely inside the slot
+            const maxScaleX = availableWidth / baseWidth;
+            const maxScaleY = availableHeight / baseHeight;
+            const maxScale = Math.min(maxScaleX, maxScaleY, Number.POSITIVE_INFINITY);
+
+            const userScale = slot.scale ?? 1;
+            const finalScale = Math.min(userScale, maxScale);
+
+            const finalDrawWidth = Math.round(baseWidth * finalScale);
+            const finalDrawHeight = Math.round(baseHeight * finalScale);
+
+            const outputCanvas = document.createElement('canvas');
+            outputCanvas.width = outputWidthPx;
+            outputCanvas.height = outputHeightPx;
+            const outCtx = outputCanvas.getContext('2d');
+
+            if (outCtx) {
+              // Fill with white background
+              outCtx.fillStyle = '#ffffff';
+              outCtx.fillRect(0, 0, outputWidthPx, outputHeightPx);
+
+              // Image position relative to slot (imgX/imgY are absolute, convert to relative mm)
+              let relImgXmm = imgX - (x + slotPaddingMM);
+              let relImgYmm = imgY - (y + slotPaddingMM);
+
+              // Clamp relative position so the image does not leave visible area (no cropping)
+              const minRelX = 0;
+              const minRelY = 0;
+              const maxRelX = Math.max(0, availableWidth - finalDrawWidth);
+              const maxRelY = Math.max(0, availableHeight - finalDrawHeight);
+
+              relImgXmm = Math.min(maxRelX, Math.max(minRelX, relImgXmm));
+              relImgYmm = Math.min(maxRelY, Math.max(minRelY, relImgYmm));
+
+              // Convert mm positions to pixels relative to slot origin
+              const drawWidthPx = Math.round((finalDrawWidth) * DPI / 25.4);
+              const drawHeightPx = Math.round((finalDrawHeight) * DPI / 25.4);
+              const drawXPx = Math.round(relImgXmm * DPI / 25.4);
+              const drawYPx = Math.round(relImgYmm * DPI / 25.4);
+
+              // Draw the rotated image scaled and positioned
+              outCtx.drawImage(rotatedCanvas, drawXPx, drawYPx, drawWidthPx, drawHeightPx);
+            }
+
+            const imgData = outputCanvas.toDataURL('image/jpeg', 0.95);
+
+            // Add the pre-rendered (and guaranteed non-cropped) image to PDF at the slot position
+            const finalX = x + slotPaddingMM;
+            const finalY = y + slotPaddingMM;
+            pdf.addImage(imgData, 'JPEG', finalX, finalY, availableWidth, availableHeight);
           } catch (error) {
             console.error('Error adding image to PDF:', error);
           }
