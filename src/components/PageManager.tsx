@@ -91,7 +91,7 @@ export const PageManager: React.FC = () => {
 
           {/* Page Actions */}
           {currentPage && (
-            <div className="flex gap-2 sm:gap-3 mt-3 sm:mt-4 !py-3 sm:pt-4 border-t border-slate-700/50">
+            <div className="flex gap-2 sm:gap-3 mt-3 sm:mt-4 !px-2 !py-3 sm:pt-4 border-t border-slate-700/50">
               <button
                 onClick={() => duplicatePage(currentPage.id)}
                 className="flex-1 px-2 sm:px-3 !py-2 sm:py-2.5 text-[10px] sm:text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 active:bg-slate-700/70 rounded-sm transition-all flex items-center justify-center gap-1 sm:gap-1.5 ring-1 ring-slate-600/50"
