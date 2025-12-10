@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   PhotoUploader,
   PhotoGallery,
@@ -14,6 +14,35 @@ function App() {
   const [sidebarTab, setSidebarTab] = useState<'upload' | 'layout' | 'pages'>('upload');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { photos, pages } = usePhotoStore();
+  const [isTouchDevice, setIsTouchDevice] = useState<boolean>(false);
+
+  // Detect touch-capable devices on mount
+  useEffect(() => {
+    const touch = typeof window !== 'undefined' && (("ontouchstart" in window) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0));
+    setIsTouchDevice(!!touch);
+  }, []);
+
+  // Lock body scroll on mobile when the preview (main) view is visible.
+  // We consider the preview visible on small screens when the mobile menu is closed (`mobileMenuOpen === false`).
+  useEffect(() => {
+    if (!isTouchDevice) return; // only lock on touch devices / mobile
+
+    const prevOverflow = document.body.style.overflow;
+    const prevTouchAction = document.body.style.touchAction;
+
+    if (!mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.body.style.overflow = prevOverflow || '';
+      document.body.style.touchAction = prevTouchAction || '';
+    }
+
+    return () => {
+      document.body.style.overflow = prevOverflow || '';
+      document.body.style.touchAction = prevTouchAction || '';
+    };
+  }, [mobileMenuOpen, isTouchDevice]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">

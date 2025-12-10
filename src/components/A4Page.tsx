@@ -253,6 +253,7 @@ export const A4Page: React.FC<A4PageProps> = ({ page, pageIndex, isCurrentPage }
           maxWidth: '100%',
           // maxHeight: 'calc(100vh - 180px)',
           minHeight: 'calc(100vh - 180px)',
+          touchAction: 'pan-y', // Allow vertical scroll but prevent other touch gestures from interfering
         }}
       >
         <DndContext

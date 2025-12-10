@@ -32,6 +32,16 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  // Toggle to enable/disable panning (dragging the image inside the slot)
+  const [panEnabled, setPanEnabled] = useState<boolean>(false);
+  const [isTouchDevice, setIsTouchDevice] = useState<boolean>(false);
+
+  // Detect touch devices on mount. On desktop enable panning by default; on touch devices start disabled.
+  useEffect(() => {
+    const touch = typeof window !== 'undefined' && (("ontouchstart" in window) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0));
+    setIsTouchDevice(!!touch);
+    setPanEnabled(!touch);
+  }, []);
 
   // Local state for smooth dragging
   const [localOffset, setLocalOffset] = useState({ x: slot.offsetX, y: slot.offsetY });
@@ -86,6 +96,13 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (!photo) return;
+      // If the user started the mouse down on a control button (including the drag handle),
+      // don't begin panning the image — allow the control to handle the event.
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest('button')) return;
+      // If on a touch device and panning is disabled via the toggle, don't start dragging the image
+      if (isTouchDevice && !panEnabled) return;
+
       e.preventDefault();
       e.stopPropagation();
       onActivate();
@@ -93,12 +110,22 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
       setStartPos({ x: e.clientX, y: e.clientY });
       setStartOffset({ x: localOffset.x, y: localOffset.y });
     },
-    [photo, localOffset, onActivate]
+    [photo, localOffset, onActivate, panEnabled, isTouchDevice]
   );
 
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
       if (!photo) return;
+      // If the touch started on a control button (including the drag handle),
+      // don't begin panning/pinching the image.
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest('button')) return;
+
+      // For touch: allow pinch-to-zoom even when pan is disabled. Only block single-finger drag.
+      if (e.touches.length === 1 && isTouchDevice && !panEnabled) return;
+
+      e.preventDefault(); // Prevent scroll during touch
+      e.stopPropagation();
       onActivate();
 
       if (e.touches.length === 2) {
@@ -111,7 +138,7 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
         setStartOffset({ x: localOffset.x, y: localOffset.y });
       }
     },
-    [photo, localOffset, localScale, onActivate]
+    [photo, localOffset, localScale, onActivate, panEnabled, isTouchDevice]
   );
 
   const handleMouseMove = useCallback(
@@ -132,11 +159,13 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
       if (isPinching && e.touches.length === 2) {
+        e.preventDefault(); // Prevent scroll during pinch
         const distance = getTouchDistance(e.touches);
         const scaleDelta = distance / startDistance;
         const newScale = Math.max(0.5, Math.min(3, startScale * scaleDelta));
         setLocalScale(newScale);
       } else if (isDragging && e.touches.length === 1) {
+        e.preventDefault(); // Prevent scroll during drag
         const dx = e.touches[0].clientX - startPos.x;
         const dy = e.touches[0].clientY - startPos.y;
 
@@ -286,8 +315,14 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
         data-slot-id={slot.id}
         className={`w-full h-full overflow-hidden relative rounded-lg bg-gray-100 p-2 box-border
           ${isActive ? 'border-2 border-indigo-400 shadow-lg bg-white' : 'border-transparent'}
-          ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-        onClick={onActivate}
+          ${panEnabled ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'} ${panEnabled ? 'ring-2 ring-violet-400/30' : ''}`}
+        style={{ touchAction: 'none' }}
+        onClick={() => {
+          // Don't activate if we just finished dragging
+          if (!isDragging && !isPinching) {
+            onActivate();
+          }
+        }}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
         // wheel is attached manually with passive: false to allow preventDefault
@@ -329,16 +364,17 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
         {/* Unified top-left control row: drag, fullscreen, rotate, layer */}
         <div className="absolute top-1 left-1 right-1 z-40 p-0.5">
           <div className="flex items-center justify-between gap-2">
-            {/* Left group: drag, fullscreen, rotate (wrap if needed) */}
-            <div className="flex flex-wrap items-center gap-2">
+            {/* Left group: drag, fullscreen, rotate (keep on single line) */}
+            <div className="flex items-center gap-2">
               {/* Drag handle - injected props from DraggableSlot */}
               <button
                 {...(dragHandleProps || {})}
+                data-drag-handle="true"
                 aria-label="Drag slot"
-                className="w-6 h-6 sm:w-7 sm:h-7 rounded bg-white/90 border border-gray-200 shadow-sm flex items-center justify-center text-gray-600 cursor-grab active:cursor-grabbing"
+                className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-white/90 border border-gray-200 shadow-sm flex items-center justify-center text-gray-600 cursor-grab active:cursor-grabbing"
                 role="button"
               >
-                <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <svg className="w-3 h-3 sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M10 6h.01M6 6h.01M14 6h.01M18 6h.01M10 12h.01M6 12h.01M14 12h.01M18 12h.01M10 18h.01M6 18h.01M14 18h.01M18 18h.01" />
                 </svg>
               </button>
@@ -346,25 +382,42 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
               {/* Fullscreen - always visible */}
               <button
                 onClick={(e) => { e.stopPropagation(); handleFullscreen(e); }}
-                className="w-6 h-6 sm:w-7 sm:h-7 bg-white/90 border border-gray-200 text-gray-600 rounded shadow-sm flex items-center justify-center hover:bg-white hover:scale-105 transition-transform"
+                className="w-5 h-5 sm:w-6 sm:h-6 bg-white/90 border border-gray-200 text-gray-600 rounded shadow-sm flex items-center justify-center hover:bg-white hover:scale-105 transition-transform"
                 title="View full photo"
               >
-                <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3 h-3 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                 </svg>
               </button>
 
               {/* Rotate - visible when active */}
               {isActive && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleRotate(e); }}
-                  className="w-6 h-6 sm:w-7 sm:h-7 bg-white/90 border border-gray-200 text-gray-600 rounded shadow-sm flex items-center justify-center hover:bg-white hover:scale-105 transition-transform"
-                  title="Rotate 90°"
-                >
-                  <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </button>
+                <>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleRotate(e); }}
+                    className="w-5 h-5 sm:w-6 sm:h-6 bg-white/90 border border-gray-200 text-gray-600 rounded shadow-sm flex items-center justify-center hover:bg-white hover:scale-105 transition-transform"
+                    title="Rotate 90°"
+                  >
+                    <svg className="w-3 h-3 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
+
+                  {/* Pan toggle - enable/disable dragging the image inside the slot */}
+                  {isTouchDevice && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setPanEnabled((s) => !s); }}
+                      aria-pressed={panEnabled}
+                      title={panEnabled ? 'Disable image pan' : 'Enable image pan'}
+                      className={`w-5 h-5 sm:w-6 sm:h-6 border rounded flex items-center justify-center transition-transform ${panEnabled ? 'bg-violet-600 text-white border-violet-700' : 'bg-white/90 text-gray-600 border-gray-200 hover:bg-white hover:scale-105'}`}
+                    >
+                      <svg className="w-3 h-3 sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="none" stroke={panEnabled ? 'white' : 'currentColor'}>
+                        {/* Pan/move icon (four-way arrows) */}
+                        <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M12 4v4M12 16v4M4 12h4M16 12h4M7 7l3-3M17 7l-3-3M7 17l3 3M17 17l-3 3" />
+                      </svg>
+                    </button>
+                  )}
+                </>
               )}
             </div>
 
@@ -374,7 +427,7 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
                 <>
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowLayerMenu((s) => !s); }}
-                    className="w-6 h-6 sm:w-7 sm:h-7 bg-white/90 border border-gray-200 text-gray-700 rounded shadow-sm flex items-center justify-center hover:bg-white hover:scale-105 transition-transform"
+                    className="w-5 h-5 sm:w-6 sm:h-6 bg-white/90 border border-gray-200 text-gray-700 rounded shadow-sm flex items-center justify-center hover:bg-white hover:scale-105 transition-transform"
                     title="Show controls"
                   >
                     <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-violet-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -389,7 +442,7 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
                         <button
                           key="incW"
                           onClick={(e) => { e.stopPropagation(); const pages = usePhotoStore.getState().pages; const page = pages.find((p) => p.slots.some((s) => s.id === slot.id)); if (!page) return; const curCol = slot.colSpan ?? 1; usePhotoStore.getState().setSlotSpan(page.id, slot.id, curCol + 1, slot.rowSpan ?? 1); setShowLayerMenu(false); }}
-                          className="w-6 h-6 sm:w-7 sm:h-7 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
+                          className="w-5 h-5 sm:w-6 sm:h-6 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
                           title="Increase width"
                         >
                           <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -401,7 +454,7 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
                         <button
                           key="decW"
                           onClick={(e) => { e.stopPropagation(); const pages = usePhotoStore.getState().pages; const page = pages.find((p) => p.slots.some((s) => s.id === slot.id)); if (!page) return; const curCol = slot.colSpan ?? 1; usePhotoStore.getState().setSlotSpan(page.id, slot.id, Math.max(1, curCol - 1), slot.rowSpan ?? 1); setShowLayerMenu(false); }}
-                          className="w-6 h-6 sm:w-7 sm:h-3.7 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
+                          className="w-5 h-5 sm:w-6 sm:h-6 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
                           title="Decrease width"
                         >
                           <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -413,7 +466,7 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
                         <button
                           key="incH"
                           onClick={(e) => { e.stopPropagation(); const pages = usePhotoStore.getState().pages; const page = pages.find((p) => p.slots.some((s) => s.id === slot.id)); if (!page) return; const curRow = slot.rowSpan ?? 1; usePhotoStore.getState().setSlotSpan(page.id, slot.id, slot.colSpan ?? 1, curRow + 1); setShowLayerMenu(false); }}
-                          className="w-6 h-6 sm:w-7 sm:h-3.7 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
+                          className="w-5 h-5 sm:w-6 sm:h-6 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
                           title="Increase height"
                         >
                           <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -425,7 +478,7 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
                         <button
                           key="decH"
                           onClick={(e) => { e.stopPropagation(); const pages = usePhotoStore.getState().pages; const page = pages.find((p) => p.slots.some((s) => s.id === slot.id)); if (!page) return; const curRow = slot.rowSpan ?? 1; usePhotoStore.getState().setSlotSpan(page.id, slot.id, slot.colSpan ?? 1, Math.max(1, curRow - 1)); setShowLayerMenu(false); }}
-                          className="w-6 h-6 sm:w-7 sm:h-3.7 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
+                          className="w-5 h-5 sm:w-6 sm:h-6 mb-1 bg-black/60 text-white rounded flex items-center justify-center hover:bg-black/80"
                           title="Decrease height"
                         >
                           <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
