@@ -472,9 +472,6 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
 
     // Now redistribute photos across pages, starting with page 1
     // The target slot gets its new span, all other slots are 1x1
-    const pageIndex = state.pages.findIndex((p) => p.id === page.id);
-    const cols = cfg.cols;
-    const rows = cfg.rows;
 
     // Helper to create occupancy grid and place slots
     const redistributePhotos = () => {

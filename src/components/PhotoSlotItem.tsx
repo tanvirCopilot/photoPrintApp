@@ -29,7 +29,7 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
   const [startDistance, setStartDistance] = useState(0);
   const [showFullscreen, setShowFullscreen] = useState(false);
   const [showLayerMenu, setShowLayerMenu] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
+  const [, setIsHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   // Toggle to enable/disable panning (dragging the image inside the slot)
@@ -186,18 +186,8 @@ export const PhotoSlotItem: React.FC<PhotoSlotItemProps> = ({
     setIsPinching(false);
   }, [isDragging, isPinching, localOffset, localScale, localRotation, onPositionChange]);
 
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
-      if (!photo || !isActive) return;
-      e.preventDefault();
-
-      const delta = e.deltaY > 0 ? 0.95 : 1.05;
-      const newScale = Math.max(0.3, Math.min(3, localScale * delta));
-      setLocalScale(newScale);
-      onPositionChange(localOffset.x, localOffset.y, newScale, localRotation);
-    },
-    [photo, isActive, localScale, localOffset, localRotation, onPositionChange]
-  );
+  // wheel handler is attached manually via useEffect (with passive: false)
+  // keep logic in the effect; no separate handleWheel function is needed.
 
   useEffect(() => {
     if (isDragging || isPinching) {

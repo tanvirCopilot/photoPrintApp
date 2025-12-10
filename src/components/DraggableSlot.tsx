@@ -14,7 +14,6 @@ export const DraggableSlot: React.FC<DraggableSlotProps> = ({
   id,
   children,
   hasPhoto,
-  isActive,
   onPointerDown,
   refCallback,
 }) => {
@@ -52,7 +51,7 @@ export const DraggableSlot: React.FC<DraggableSlotProps> = ({
       `}
     >
       {/* Pass draggable listeners/attributes into child so all top controls can live together */}
-      {React.isValidElement(children) ? React.cloneElement(children as React.ReactElement, { dragHandleProps: { ...listeners, ...attributes } }) : children}
+      {React.isValidElement(children) ? React.cloneElement(children as React.ReactElement<any>, { dragHandleProps: { ...listeners, ...attributes } }) : children}
       
       {isOver && !isDragging && (
         <div className="absolute inset-0 bg-violet-500/20 pointer-events-none rounded-lg" />
