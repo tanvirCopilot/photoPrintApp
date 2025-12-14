@@ -298,8 +298,9 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
   },
 
   swapSlots: (pageId: string, fromSlotId: string, toSlotId: string) => {
-    set((state) => ({
-      pages: state.pages.map((page) => {
+    set((state) => {
+      // First, update the slots by swapping photoIds
+      const newPages = state.pages.map((page) => {
         if (page.id !== pageId) return page;
 
         const fromSlot = page.slots.find((s) => s.id === fromSlotId);
@@ -319,8 +320,29 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
             return slot;
           }),
         };
-      }),
-    }));
+      });
+
+      // Now reorder the photos array to match the visual order across all pages.
+      // Collect photoIds in visual order (page by page, slot by slot)
+      const visualOrder: string[] = [];
+      for (const page of newPages) {
+        for (const slot of page.slots) {
+          if (slot.photoId && !visualOrder.includes(slot.photoId)) {
+            visualOrder.push(slot.photoId);
+          }
+        }
+      }
+
+      // Add any photos not currently in slots (unassigned) at the end, preserving their relative order
+      const unassignedPhotos = state.photos.filter((p) => !visualOrder.includes(p.id));
+      const finalOrder = [...visualOrder, ...unassignedPhotos.map((p) => p.id)];
+
+      // Reorder the photos array to match the final order
+      const photoMap = new Map(state.photos.map((p) => [p.id, p]));
+      const reorderedPhotos = finalOrder.map((id) => photoMap.get(id)).filter(Boolean) as Photo[];
+
+      return { pages: newPages, photos: reorderedPhotos };
+    });
   },
 
   movePhotoBetweenPages: (fromPageId: string, fromSlotId: string, toPageId: string, toSlotId: string) => {
@@ -338,8 +360,8 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
     const photoId = fromSlot.photoId;
     const existingPhotoId = toSlot.photoId;
 
-    set((state) => ({
-      pages: state.pages.map((page) => {
+    set((state) => {
+      const newPages = state.pages.map((page) => {
         if (page.id === fromPageId) {
           return {
             ...page,
@@ -361,8 +383,27 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
           };
         }
         return page;
-      }),
-    }));
+      });
+
+      // Reorder the photos array to match the visual order across all pages.
+      const visualOrder: string[] = [];
+      for (const page of newPages) {
+        for (const slot of page.slots) {
+          if (slot.photoId && !visualOrder.includes(slot.photoId)) {
+            visualOrder.push(slot.photoId);
+          }
+        }
+      }
+
+      // Add any photos not currently in slots (unassigned) at the end
+      const unassignedPhotos = state.photos.filter((p) => !visualOrder.includes(p.id));
+      const finalOrder = [...visualOrder, ...unassignedPhotos.map((p) => p.id)];
+
+      const photoMap = new Map(state.photos.map((p) => [p.id, p]));
+      const reorderedPhotos = finalOrder.map((id) => photoMap.get(id)).filter(Boolean) as Photo[];
+
+      return { pages: newPages, photos: reorderedPhotos };
+    });
   },
 
   setAutoArrangeEnabled: (enabled: boolean) => {
@@ -478,6 +519,21 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
       const resultPages: Page[] = [];
       let photoIdx = 0;
 
+      // Build a map of existing photo transforms so we can preserve them
+      const existingTransforms = new Map<string, { offsetX: number; offsetY: number; scale: number; rotation: number }>();
+      for (const pg of state.pages) {
+        for (const s of pg.slots) {
+          if (s.photoId) {
+            existingTransforms.set(s.photoId, {
+              offsetX: s.offsetX ?? 0,
+              offsetY: s.offsetY ?? 0,
+              scale: s.scale ?? 1,
+              rotation: s.rotation ?? 0,
+            });
+          }
+        }
+      }
+
       // Process each existing page
       for (let pIdx = 0; pIdx < state.pages.length; pIdx++) {
         const currentPage = state.pages[pIdx];
@@ -537,13 +593,14 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
             const nextPhotoId = photoIdx < allAssignedPhotoIds.length ? allAssignedPhotoIds[photoIdx] : null;
             if (nextPhotoId) photoIdx++;
 
+            const transformed = nextPhotoId ? existingTransforms.get(nextPhotoId) : undefined;
             newSlots.push({
               id: uuidv4(),
               photoId: nextPhotoId,
-              offsetX: 0,
-              offsetY: 0,
-              scale: 1,
-              rotation: 0,
+              offsetX: transformed ? transformed.offsetX : 0,
+              offsetY: transformed ? transformed.offsetY : 0,
+              scale: transformed ? transformed.scale : 1,
+              rotation: transformed ? transformed.rotation : 0,
               colStart: c,
               rowStart: r,
               colSpan: 1,
@@ -571,13 +628,14 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
             const nextPhotoId = photoIdx < allAssignedPhotoIds.length ? allAssignedPhotoIds[photoIdx] : null;
             if (nextPhotoId) photoIdx++;
 
+            const transformed = nextPhotoId ? existingTransforms.get(nextPhotoId) : undefined;
             newSlots.push({
               id: uuidv4(),
               photoId: nextPhotoId,
-              offsetX: 0,
-              offsetY: 0,
-              scale: 1,
-              rotation: 0,
+              offsetX: transformed ? transformed.offsetX : 0,
+              offsetY: transformed ? transformed.offsetY : 0,
+              scale: transformed ? transformed.scale : 1,
+              rotation: transformed ? transformed.rotation : 0,
               colStart: c,
               rowStart: r,
               colSpan: 1,

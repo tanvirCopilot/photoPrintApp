@@ -51,14 +51,19 @@ export const PDFExporter: React.FC = () => {
           const photo = photos.find((p) => p.id === slot.photoId);
           if (!photo) continue;
 
-          const row = Math.floor(slotIndex / layout.cols);
-          const col = slotIndex % layout.cols;
+          // Use slot's grid placement properties (1-based) for proper span support
+          const colStart = (slot.colStart ?? 1) - 1; // convert to 0-based
+          const rowStart = (slot.rowStart ?? 1) - 1; // convert to 0-based
+          const colSpan = slot.colSpan ?? 1;
+          const rowSpan = slot.rowSpan ?? 1;
 
-          // compute x/y and slot sizes using flexible widths/heights
-          const x = PRINT_MARGIN_MM + colWidths.slice(0, col).reduce((a, b) => a + b, 0);
-          const y = PRINT_MARGIN_MM + rowHeights.slice(0, row).reduce((a, b) => a + b, 0);
-          const slotWidth = colWidths[col];
-          const slotHeight = rowHeights[row];
+          // compute x/y using the slot's actual grid position
+          const x = PRINT_MARGIN_MM + colWidths.slice(0, colStart).reduce((a, b) => a + b, 0);
+          const y = PRINT_MARGIN_MM + rowHeights.slice(0, rowStart).reduce((a, b) => a + b, 0);
+          
+          // compute slot size by summing widths/heights for the span
+          const slotWidth = colWidths.slice(colStart, colStart + colSpan).reduce((a, b) => a + b, 0);
+          const slotHeight = rowHeights.slice(rowStart, rowStart + rowSpan).reduce((a, b) => a + b, 0);
 
           // Determine rotation and whether dimensions should be swapped
           const rot = (slot.rotation || 0) % 360;
@@ -223,24 +228,40 @@ export const PDFExporter: React.FC = () => {
           }
         }
 
-        // Draw grid lines for visual reference (optional, light gray)
+        // Draw slot borders (respecting spans) for visual reference (light gray)
         pdf.setDrawColor(220, 220, 220);
         pdf.setLineWidth(0.1);
 
-        // Draw horizontal grid lines using rowHeights
-        let accY = PRINT_MARGIN_MM;
-        pdf.line(PRINT_MARGIN_MM, accY, PRINT_MARGIN_MM + printableWidth, accY);
-        for (let r = 0; r < rowHeights.length; r++) {
-          accY += rowHeights[r];
-          pdf.line(PRINT_MARGIN_MM, accY, PRINT_MARGIN_MM + printableWidth, accY);
-        }
+        // Use an occupancy grid to ensure we draw one rect per logical slot (respecting colSpan/rowSpan)
+        const cols = layout.cols;
+        const rows = layout.rows;
+        const handled: boolean[][] = Array.from({ length: rows }, () => Array.from({ length: cols }, () => false));
 
-        // Draw vertical grid lines using colWidths
-        let accX = PRINT_MARGIN_MM;
-        pdf.line(accX, PRINT_MARGIN_MM, accX, PRINT_MARGIN_MM + printableHeight);
-        for (let c = 0; c < colWidths.length; c++) {
-          accX += colWidths[c];
-          pdf.line(accX, PRINT_MARGIN_MM, accX, PRINT_MARGIN_MM + printableHeight);
+        for (const slot of page.slots) {
+          const colStart = (slot.colStart ?? 1) - 1;
+          const rowStart = (slot.rowStart ?? 1) - 1;
+          const colSpan = slot.colSpan ?? 1;
+          const rowSpan = slot.rowSpan ?? 1;
+
+          // if this slot's top-left cell is already handled (part of a previous span), skip drawing
+          if (rowStart < 0 || colStart < 0 || rowStart >= rows || colStart >= cols) continue;
+          if (handled[rowStart][colStart]) continue;
+
+          // mark occupied cells
+          for (let r = rowStart; r < Math.min(rows, rowStart + rowSpan); r++) {
+            for (let c = colStart; c < Math.min(cols, colStart + colSpan); c++) {
+              handled[r][c] = true;
+            }
+          }
+
+          // compute rect for this slot span
+          const rectX = PRINT_MARGIN_MM + colWidths.slice(0, colStart).reduce((a, b) => a + b, 0);
+          const rectY = PRINT_MARGIN_MM + rowHeights.slice(0, rowStart).reduce((a, b) => a + b, 0);
+          const rectW = colWidths.slice(colStart, colStart + colSpan).reduce((a, b) => a + b, 0);
+          const rectH = rowHeights.slice(rowStart, rowStart + rowSpan).reduce((a, b) => a + b, 0);
+
+          // Draw rounded rectangle? jsPDF has only rect; use rect for a clean border.
+          pdf.rect(rectX, rectY, rectW, rectH, 'S');
         }
 
         setProgress(((pageIndex + 1) / pages.length) * 100);
